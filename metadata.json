@@ -1,0 +1,7 @@
+{
+  "name": "Oficina IA",
+  "description": "Uma plataforma inteligente para aprendizado de mecânica e diagnóstico automotivo com IA.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
