@@ -8,33 +8,28 @@ export type Screen =
   | 'WORKSHOP' 
   | 'LEARNING' 
   | 'ACHIEVEMENTS' 
-  | 'SETTINGS';
+  | 'SETTINGS'
+  | 'TESTS'
+  | 'ADMIN'
+  | 'CHECKOUT'
+  | 'FORGOT_PASSWORD';
 
 export interface Vehicle {
   id: string;
   make: string;
   model: string;
   year: string;
-  engine?: string; // Ex: 1.6, 2.0 Turbo, 1.0 MPI
-  fuel?: string;   // Ex: Flex, GNV, Diesel, Gasolina, Álcool
+  engine?: string;
+  fuel?: string;
 }
 
-export interface DiagnosticResult {
-  code: string;
-  description: string;
-  severity: 'low' | 'medium' | 'high';
-}
-
-export interface Achievement {
-  id: string;
-  title: string;
-  description: string;
-  unlocked: boolean;
-  icon: string;
-}
+export type UserRole = 'user' | 'admin';
 
 export interface UserProfile {
+  id: string;
+  email: string;
   name: string;
+  role: UserRole;
   level: string;
   xp: number;
   premium: boolean;

@@ -28,8 +28,6 @@ const WorkshopScreen: React.FC<WorkshopScreenProps> = ({ onNavigate, onComplete,
     setSelectedPart(part.id);
     setLoadingTip(true);
     setShowTip(true);
-    
-    // Consultar o "Pai" (IA/API) para uma dica contextual
     const tip = await getWorkshopTip(currentCode, part.name);
     setAiTip(tip);
     setLoadingTip(false);
@@ -43,16 +41,21 @@ const WorkshopScreen: React.FC<WorkshopScreenProps> = ({ onNavigate, onComplete,
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-950">
+    <div className="flex flex-col h-full bg-slate-950 pb-16">
       <div className="p-6">
-        <button onClick={() => onNavigate('EXPLANATION')} className="text-slate-400 hover:text-white flex items-center gap-2 mb-4">
-          <ArrowLeft size={20} />
-          Voltar
-        </button>
         <header className="flex justify-between items-start">
-          <div>
-            <h2 className="text-2xl font-oswald text-white uppercase tracking-tight">Oficina Virtual</h2>
-            <p className="text-slate-400 text-sm">Escaneando falha: <span className="text-red-400 font-bold">{currentCode}</span></p>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => onNavigate('DASHBOARD')} 
+              className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+              title="Voltar ao Início"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <h2 className="text-2xl font-oswald text-white uppercase tracking-tight leading-none">Oficina Virtual</h2>
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Escaneando: <span className="text-red-400">{currentCode}</span></p>
+            </div>
           </div>
           <button 
             onClick={() => setShowTip(!showTip)}
@@ -63,29 +66,21 @@ const WorkshopScreen: React.FC<WorkshopScreenProps> = ({ onNavigate, onComplete,
         </header>
       </div>
 
-      {/* Simulator View */}
       <div className="flex-1 relative overflow-hidden bg-slate-900 border-y border-slate-800 flex items-center justify-center">
         {showTip && (
           <div className="absolute top-4 left-4 right-4 bg-white rounded-2xl shadow-2xl z-40 animate-in fade-in slide-in-from-top-4 duration-300 overflow-hidden">
             <div className="bg-amber-500 px-4 py-1 flex items-center gap-2">
-              <Zap size={12} className="text-white fill-white" />
-              <span className="text-[10px] font-bold text-white uppercase tracking-wider">Mestre IA em Tempo Real</span>
+              <Zap size={10} className="text-white fill-white" />
+              <span className="text-[9px] font-black text-white uppercase tracking-widest">IA Master - Dica Técnica</span>
             </div>
             <div className="p-4 flex gap-3">
               <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center shrink-0">
                 {loadingTip ? <Loader2 size={20} className="text-amber-500 animate-spin" /> : <MessageCircle size={20} className="text-amber-500" />}
               </div>
               <div className="flex-1">
-                {loadingTip ? (
-                  <div className="space-y-2 py-1">
-                    <div className="h-2 bg-slate-200 rounded w-3/4 animate-pulse"></div>
-                    <div className="h-2 bg-slate-200 rounded w-1/2 animate-pulse"></div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-800 leading-relaxed font-medium">
-                    "{aiTip || "Selecione uma peça para receber orientação técnica."}"
-                  </p>
-                )}
+                <p className="text-xs text-slate-800 leading-relaxed font-semibold italic">
+                  "{aiTip || "Selecione um componente para análise."}"
+                </p>
               </div>
             </div>
           </div>
@@ -95,7 +90,6 @@ const WorkshopScreen: React.FC<WorkshopScreenProps> = ({ onNavigate, onComplete,
           <svg viewBox="0 0 200 200" className="w-full h-full text-slate-700">
             <rect x="40" y="40" width="120" height="120" rx="10" fill="currentColor" />
             <circle cx="100" cy="100" r="40" fill="#1e293b" />
-            <path d="M60 60 L140 140 M140 60 L60 140" stroke="#334155" strokeWidth="2" />
           </svg>
         </div>
 
@@ -114,75 +108,63 @@ const WorkshopScreen: React.FC<WorkshopScreenProps> = ({ onNavigate, onComplete,
 
         {step === 1 && (
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center space-y-4 z-50">
-            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-white font-bold animate-pulse">REPARANDO COM IA...</p>
+            <Loader2 size={40} className="text-blue-500 animate-spin" />
+            <p className="text-white font-black uppercase text-[10px] tracking-widest">Sincronizando Peças com IA...</p>
           </div>
         )}
 
         {step === 2 && (
-          <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center space-y-4 z-50">
+          <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center space-y-4 z-50">
             <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/20">
               <CheckCircle size={40} className="text-white" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-2xl font-oswald text-white uppercase">Conserto Validado!</h3>
-              <p className="text-slate-400">O Mestre IA confirmou que o erro {currentCode} foi solucionado.</p>
+              <h3 className="text-2xl font-oswald text-white uppercase">Reparo Aprovado!</h3>
+              <p className="text-slate-400 text-sm">O Mestre IA validou sua correção técnica.</p>
             </div>
             <button 
               onClick={onComplete}
-              className="mt-6 w-full py-4 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20"
+              className="mt-6 w-full py-4 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
             >
-              FINALIZAR DIAGNÓSTICO
+              CONCLUIR SERVIÇO
             </button>
           </div>
         )}
       </div>
 
-      <div className="p-6 bg-slate-900 min-h-[180px]">
+      <div className="p-6 bg-slate-900 min-h-[160px]">
         {selectedPart ? (
-          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
             <div className="flex items-start justify-between">
               <div>
-                <h4 className="text-white font-bold text-lg">{parts.find(p => p.id === selectedPart)?.name}</h4>
-                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Status: Inspeção Disponível</p>
+                <h4 className="text-white font-bold text-lg leading-none">{parts.find(p => p.id === selectedPart)?.name}</h4>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black mt-2">Pronto para Inspeção</p>
               </div>
-              <div className="bg-blue-500/10 p-2 rounded-lg">
-                <Info size={20} className="text-blue-500" />
-              </div>
+              <div className="bg-blue-500/10 p-2 rounded-lg text-blue-500"><Info size={20} /></div>
             </div>
-            
-            <div className="flex gap-3 pt-2">
-              <button className="flex-1 py-3 bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-700 hover:bg-slate-700 transition-colors">
-                <GaugeIcon size={16} className="text-blue-400" />
-                USAR MULTÍMETRO
+            <div className="flex gap-3">
+              <button className="flex-1 py-3 bg-slate-800 text-white font-bold rounded-xl text-[10px] flex items-center justify-center gap-2 border border-slate-700 uppercase tracking-widest">
+                Multímetro
               </button>
               {(selectedPart === 'COIL' || selectedPart === 'ENGINE') && (
                 <button 
                   onClick={handleRepair}
-                  className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 active:scale-95 transition-all"
+                  className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl text-[10px] flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 active:scale-95 transition-all uppercase tracking-widest"
                 >
-                  <Hammer size={16} />
-                  REPARAR
+                  <Hammer size={16} /> REPARAR
                 </button>
               )}
             </div>
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-2 py-8">
-            <Layers size={32} className="opacity-20" />
-            <p className="text-sm font-medium">Toque nos pontos para iniciar a inspeção do "Mestre"</p>
+          <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-2 py-8 opacity-40">
+            <Layers size={32} />
+            <p className="text-[10px] font-black uppercase tracking-widest">Toque nos pontos para iniciar</p>
           </div>
         )}
       </div>
     </div>
   );
 };
-
-const GaugeIcon = ({ size, className }: { size: number, className: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="m12 14 4-4" />
-    <path d="M3.34 19a10 10 0 1 1 17.32 0" />
-  </svg>
-);
 
 export default WorkshopScreen;
