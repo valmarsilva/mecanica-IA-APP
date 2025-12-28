@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Screen, UserProfile } from '../types';
-import { Scan, Hammer, GraduationCap, Trophy, Settings, Bell, Zap, ChevronRight } from 'lucide-react';
+import { Scan, Hammer, GraduationCap, Trophy, ChevronRight, Zap, Target, Star, Wrench, ShieldCheck } from 'lucide-react';
 
 interface DashboardScreenProps {
   user: UserProfile;
@@ -10,78 +10,85 @@ interface DashboardScreenProps {
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNavigate }) => {
   const menuItems = [
-    { id: 'DIAGNOSIS' as Screen, label: 'Diagnóstico OBD2', icon: Scan, color: 'bg-red-500', desc: 'Leia códigos em tempo real' },
-    { id: 'WORKSHOP' as Screen, label: 'Oficina Virtual', icon: Hammer, color: 'bg-blue-500', desc: 'Simulador 3D interativo' },
-    { id: 'LEARNING' as Screen, label: 'Academia IA', icon: GraduationCap, color: 'bg-emerald-500', desc: 'Aulas e Quizzes' },
-    { id: 'ACHIEVEMENTS' as Screen, label: 'Conquistas', icon: Trophy, color: 'bg-amber-500', desc: 'Nível: ' + user.level },
+    { id: 'DIAGNOSIS' as Screen, label: 'Scanner OBD2', icon: Scan, color: 'bg-blue-600', desc: 'Diagnóstico via IA' },
+    { id: 'WORKSHOP' as Screen, label: 'Oficina Virtual', icon: Hammer, color: 'bg-indigo-600', desc: 'Treinamento Prático' },
+    { id: 'LEARNING' as Screen, label: 'Academia Técnica', icon: GraduationCap, color: 'bg-emerald-600', desc: 'Módulos Especializados' },
+    { id: 'ACHIEVEMENTS' as Screen, label: 'Conquistas', icon: Trophy, color: 'bg-slate-700', desc: 'Status: ' + user.level },
   ];
 
   return (
-    <div className="p-6 space-y-8">
-      <div className="flex flex-col">
-        <h2 className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Status Operacional</h2>
-        <h1 className="text-2xl font-bold text-white leading-none">Olá, {user.name.split(' ')[0]}! 👋</h1>
-      </div>
-
-      {/* Progress Card */}
-      <div className="bg-slate-800 rounded-[2rem] p-6 border border-slate-700 shadow-2xl overflow-hidden relative group">
-        <div className="relative z-10">
-          <div className="flex justify-between items-end mb-4">
-            <div>
-              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Progresso Técnico</p>
-              <h3 className="text-xl font-bold text-white uppercase font-oswald tracking-tight">{user.level}</h3>
-            </div>
-            <div className="text-right">
-              <span className="text-white font-bold text-lg">{user.xp}</span>
-              <span className="text-slate-500 text-xs font-bold"> / 1000 XP</span>
-            </div>
-          </div>
-          <div className="h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-700/50 p-0.5">
-            <div 
-              className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(59,130,246,0.5)]" 
-              style={{ width: `${(user.xp / 1000) * 100}%` }}
-            ></div>
-          </div>
-        </div>
-        <Zap className="absolute -right-6 -bottom-6 text-slate-700/20 rotate-12 transition-transform group-hover:scale-110 group-hover:rotate-0 duration-700" size={140} />
-      </div>
-
-      {/* Grid Menu */}
-      <div className="space-y-4">
-        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Atividades Principais</h3>
-        <div className="grid grid-cols-1 gap-4">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => onNavigate(item.id)}
-                className="group flex items-center gap-4 bg-slate-800/50 p-5 rounded-3xl border border-slate-700/50 hover:border-blue-500/30 hover:bg-slate-800 transition-all text-left shadow-lg active:scale-[0.98]"
-              >
-                <div className={`${item.color} p-3.5 rounded-[1.2rem] text-white shadow-xl group-hover:scale-110 transition-transform`}>
-                  <Icon size={24} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-white text-base group-hover:text-blue-400 transition-colors truncate">{item.label}</h4>
-                  <p className="text-xs text-slate-500 line-clamp-1">{item.desc}</p>
-                </div>
-                <ChevronRight size={18} className="text-slate-700 group-hover:text-blue-400 transition-colors" />
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="bg-blue-600/5 border border-blue-500/20 rounded-[1.5rem] p-5 flex items-start gap-4 shadow-inner">
-        <div className="bg-blue-600/20 p-2.5 rounded-xl text-blue-500 shrink-0">
-          <Zap size={20} className="fill-blue-500" />
-        </div>
+    <div className="p-6 space-y-6 bg-slate-900 min-h-full pb-24 font-inter">
+      <header className="flex justify-between items-center">
         <div>
-          <h5 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Insight do Mestre IA</h5>
-          <p className="text-xs text-slate-300 leading-relaxed font-medium italic">
-            "Sempre cheque a continuidade dos cabos antes de condenar o sensor. O multímetro é seu melhor amigo!"
-          </p>
+          <p className="text-blue-500 text-[10px] font-black uppercase tracking-widest">Valtec Connect v2.5</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Olá, {user.name.split(' ')[0]}</h1>
         </div>
+        <div className="relative">
+          <div className="w-12 h-12 rounded-2xl border-2 border-slate-700 overflow-hidden shadow-2xl">
+            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} alt="Avatar" className="w-full h-full bg-slate-800" />
+          </div>
+          <div className="absolute -bottom-1 -right-1 bg-emerald-500 w-4 h-4 rounded-full border-2 border-slate-900"></div>
+        </div>
+      </header>
+
+      {/* Stats Card */}
+      <div className="bg-slate-800 border border-slate-700/50 p-6 rounded-3xl shadow-2xl relative overflow-hidden group">
+        <div className="relative z-10 flex flex-col space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={16} className="text-blue-400" />
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{user.level}</span>
+            </div>
+            <div className="px-2 py-1 bg-blue-500/10 rounded-lg border border-blue-500/20">
+               <span className="text-[10px] font-black text-blue-400 uppercase tracking-tighter">Premium Account</span>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-bold text-slate-300">
+              <span>Experiência Técnica</span>
+              <span className="text-blue-400">{user.xp} XP</span>
+            </div>
+            <div className="h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+              <div 
+                className="h-full bg-blue-600 transition-all duration-1000 shadow-[0_0_15px_rgba(37,99,235,0.4)]" 
+                style={{ width: `${Math.min(100, (user.xp / 1000) * 100)}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+        <Wrench size={120} className="absolute -right-8 -bottom-8 text-white/[0.03] -rotate-12 group-hover:rotate-0 transition-transform duration-700" />
+      </div>
+
+      {/* Menu Grid */}
+      <div className="grid grid-cols-1 gap-4">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onNavigate(item.id)}
+              className="flex items-center gap-4 bg-slate-800/40 hover:bg-slate-800/60 p-5 rounded-2xl border border-slate-700/30 transition-all active:scale-[0.98] group relative"
+            >
+              <div className={`${item.color} p-4 rounded-xl text-white shadow-lg`}>
+                <Icon size={24} />
+              </div>
+              <div className="flex-1 text-left">
+                <h4 className="font-bold text-white text-base leading-none">{item.label}</h4>
+                <p className="text-xs text-slate-500 mt-1">{item.desc}</p>
+              </div>
+              <ChevronRight size={20} className="text-slate-600 group-hover:text-blue-400 transition-all" />
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Quick Tip */}
+      <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl flex items-start gap-3 shadow-inner">
+        <Zap size={20} className="text-amber-500 shrink-0 mt-0.5" />
+        <p className="text-xs text-slate-400 leading-relaxed italic">
+          <span className="text-amber-500 font-bold not-italic">Dica:</span> Cheque o chicote elétrico antes de trocar o sensor em casos de falha intermitente.
+        </p>
       </div>
     </div>
   );

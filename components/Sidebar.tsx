@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Screen, UserProfile } from '../types';
 import { 
   X, Home, Scan, Hammer, GraduationCap, Trophy, 
   Settings, ShieldAlert, LogOut, Mail, User, Star
 } from 'lucide-react';
+import { BRAND_CONFIG } from '../brandConfig';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -15,6 +16,8 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, user, onLogout }) => {
+  const [imageError, setImageError] = useState(false);
+
   const menuItems = [
     { id: 'DASHBOARD' as Screen, icon: Home, label: 'Painel Inicial' },
     { id: 'DIAGNOSIS' as Screen, icon: Scan, label: 'Diagnóstico OBD2' },
@@ -35,31 +38,36 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, user, on
 
   return (
     <>
-      {/* Backdrop */}
       <div 
         className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={onClose}
       />
       
-      {/* Drawer */}
       <aside 
         className={`fixed top-0 left-0 bottom-0 w-72 bg-slate-900 border-r border-slate-800 z-[70] transition-transform duration-300 transform ${isOpen ? 'translate-x-0' : '-translate-x-full shadow-none'}`}
       >
         <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+          <div className="p-5 border-b border-slate-800 flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Hammer size={18} className="text-white" />
-              </div>
-              <span className="font-oswald text-xl text-white uppercase tracking-tighter">Oficina IA</span>
+              {!imageError && BRAND_CONFIG.logoImageUrl ? (
+                <img 
+                  src={BRAND_CONFIG.logoImageUrl} 
+                  alt="Logo" 
+                  className="h-7 w-auto rounded-md" 
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <Hammer size={16} className="text-white" />
+                </div>
+              )}
+              <span className="font-oswald text-lg text-white uppercase tracking-tighter">{BRAND_CONFIG.name}</span>
             </div>
             <button onClick={onClose} className="p-2 text-slate-500 hover:text-white transition-colors">
-              <X size={20} />
+              <X size={18} />
             </button>
           </div>
 
-          {/* User Info */}
           <div className="p-6 bg-slate-800/30">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-600 rounded-full border-2 border-slate-700 overflow-hidden shrink-0">
@@ -75,7 +83,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, user, on
             </div>
           </div>
 
-          {/* Nav Items */}
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
             {menuItems.map((item) => {
               const Icon = item.icon;
@@ -92,7 +99,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, user, on
             })}
           </nav>
 
-          {/* Footer */}
           <div className="p-4 border-t border-slate-800 space-y-4">
             <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
               <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Suporte Técnico</p>

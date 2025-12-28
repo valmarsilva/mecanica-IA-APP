@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 import { Screen, UserProfile, Vehicle } from '../types';
-import { getVehicleSpecs } from '../geminiService';
+// Fix: Import validators instead of the non-existent validateYear
+import { validators } from '../utils/testRunner';
 import { Car, Shield, History, MessageSquare, LogOut, ChevronRight, CreditCard, Save, Edit3, Trash2, Plus, Check, PlusCircle, Sparkles, Loader2, AlertCircle, Beaker, LayoutDashboard, Info, Home } from 'lucide-react';
 
 interface SettingsScreenProps {
@@ -23,19 +24,25 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ user, onNavigate, onUpd
     window.location.href = `mailto:${SUPPORT_EMAIL}?subject=Suporte Oficina IA - Usuário: ${user.name}`;
   };
 
-  const isFormValid = carData.make.length >= 2 && carData.model.length >= 2 && carData.year.length === 4;
+  // Fix: Use validators.isValidYear instead of validateYear
+  const isYearValid = carData.year === '' || validators.isValidYear(carData.year);
+  const isFormValid = carData.make.length >= 2 && carData.model.length >= 2 && validators.isValidYear(carData.year);
 
   const handleSaveCar = () => {
     if (!isFormValid) return;
     let newGarage = [...user.garage];
+    const newCar = { ...carData, id: carData.id || Math.random().toString(36).substr(2, 9) };
+    
     if (editingCarId) {
-      newGarage = newGarage.map(v => v.id === editingCarId ? carData : v);
+      newGarage = newGarage.map(v => v.id === editingCarId ? newCar : v);
     } else {
-      newGarage.push(carData);
+      newGarage.push(newCar);
     }
-    onUpdateUser({ garage: newGarage, activeVehicleId: user.activeVehicleId || carData.id });
+    
+    onUpdateUser({ garage: newGarage, activeVehicleId: user.activeVehicleId || newCar.id });
     setIsAddingCar(false);
     setEditingCarId(null);
+    setCarData({ id: '', make: '', model: '', year: '', engine: '', fuel: '' });
   };
 
   const sections = [
@@ -63,12 +70,27 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ user, onNavigate, onUpd
         <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Minha Garagem</h3>
         {(isAddingCar || editingCarId) ? (
           <div className="bg-slate-800 border-2 border-blue-500/50 p-6 rounded-3xl space-y-4">
-            <input value={carData.make} onChange={e => setCarData({...carData, make: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white" placeholder="Marca" />
-            <input value={carData.model} onChange={e => setCarData({...carData, model: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white" placeholder="Modelo" />
-            <input value={carData.year} onChange={e => setCarData({...carData, year: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white" placeholder="Ano (Ex: 2020)" type="number" />
+            <div className="space-y-1">
+              <input value={carData.make} onChange={e => setCarData({...carData, make: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-blue-500 outline-none transition-all" placeholder="Marca" />
+            </div>
+            <div className="space-y-1">
+              <input value={carData.model} onChange={e => setCarData({...carData, model: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-blue-500 outline-none transition-all" placeholder="Modelo" />
+            </div>
+            <div className="space-y-1">
+              <input 
+                value={carData.year} 
+                onChange={e => setCarData({...carData, year: e.target.value})} 
+                className={`w-full bg-slate-900 border rounded-xl p-3 text-sm text-white outline-none transition-all ${!isYearValid && carData.year !== '' ? 'border-red-500 focus:border-red-500' : 'border-slate-700 focus:border-blue-500'}`} 
+                placeholder="Ano (Ex: 2020)" 
+                type="number" 
+              />
+              {!isYearValid && carData.year !== '' && (
+                <p className="text-[9px] text-red-500 font-bold uppercase tracking-widest ml-1">Ano inválido (1970 - 2025)</p>
+              )}
+            </div>
             <div className="flex gap-2 pt-2">
-              <button onClick={() => { setIsAddingCar(false); setEditingCarId(null); }} className="flex-1 py-3 bg-slate-700 rounded-xl text-xs font-bold text-white">CANCELAR</button>
-              <button onClick={handleSaveCar} disabled={!isFormValid} className="flex-1 py-3 bg-blue-600 disabled:opacity-50 rounded-xl text-xs font-bold text-white">SALVAR</button>
+              <button onClick={() => { setIsAddingCar(false); setEditingCarId(null); setCarData({ id: '', make: '', model: '', year: '', engine: '', fuel: '' }); }} className="flex-1 py-3 bg-slate-700 rounded-xl text-xs font-bold text-white">CANCELAR</button>
+              <button onClick={handleSaveCar} disabled={!isFormValid} className="flex-1 py-3 bg-blue-600 disabled:opacity-50 rounded-xl text-xs font-bold text-white transition-all active:scale-95 shadow-lg shadow-blue-600/20">SALVAR</button>
             </div>
           </div>
         ) : (
@@ -82,6 +104,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ user, onNavigate, onUpd
                     <p className="text-[10px] text-slate-500 font-bold">{v.year}</p>
                   </div>
                 </div>
+                <button onClick={() => { setEditingCarId(v.id); setCarData(v); }} className="p-2 text-slate-500 hover:text-white transition-colors">
+                  <Edit3 size={16} />
+                </button>
               </div>
             ))}
             <button onClick={() => setIsAddingCar(true)} className="w-full py-4 border-2 border-dashed border-slate-700 rounded-2xl flex items-center justify-center gap-2 text-slate-500 hover:text-blue-400 hover:border-blue-400 transition-all">

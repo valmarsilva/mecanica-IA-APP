@@ -1,198 +1,264 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Screen, Vehicle } from '../types';
-import { analyzePartImage } from '../geminiService';
-import { Bluetooth, RefreshCcw, AlertCircle, ChevronRight, Camera, Loader2, X, Sparkles, Car, History, Zap, Settings as SettingsIcon, Save, PlusCircle, Signal } from 'lucide-react';
+import { Screen, Vehicle, UserProfile } from '../types';
+import { analyzePartImage, generateSpeech, decodeAudioData, decodeOBD2Response } from '../geminiService';
+import { Bluetooth, RefreshCcw, AlertCircle, ChevronRight, Camera, Loader2, X, Sparkles, Signal, Database, Terminal, Volume2, ShieldAlert, Activity, Gauge, Thermometer, Zap, Power, BluetoothOff, Trash2, Cpu, RotateCcw } from 'lucide-react';
 
+/**
+ * FIXED: Missing DiagnosisScreenProps interface definition
+ */
 interface DiagnosisScreenProps {
+  user: UserProfile;
   onNavigate: (screen: Screen) => void;
   onSelectCode: (code: string) => void;
   vehicle?: Vehicle;
 }
 
-const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ onNavigate, onSelectCode, vehicle }) => {
-  const [mode, setMode] = useState<'OBD2' | 'VISUAL'>('OBD2');
-  const [status, setStatus] = useState<'IDLE' | 'CONNECTING' | 'SCANNING' | 'DONE'>('IDLE');
-  const [progress, setProgress] = useState(0);
-  const [signalStrength, setSignalStrength] = useState(0);
-  
-  const [quickEntry, setQuickEntry] = useState<Vehicle>({ id: 'temp', make: '', model: '', year: '', engine: '', fuel: '' });
-  const [isAddingQuickVehicle, setIsAddingQuickVehicle] = useState(false);
+const StatusLed = ({ color, active, blinking, label }: { color: string, active: boolean, blinking?: boolean, label: string }) => (
+  <div className="flex flex-col items-center gap-1.5">
+    <div className={`w-3 h-3 rounded-full border border-slate-700 transition-all duration-500 ${active ? `${color} shadow-[0_0_10px_${color.replace('bg-', '')}]` : 'bg-slate-800'} ${blinking && active ? 'animate-pulse' : ''}`}></div>
+    <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">{label}</span>
+  </div>
+);
 
-  const [analyzingImage, setAnalyzingImage] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+const PIDGauge = ({ label, value, unit, icon: Icon, color, active }: { label: string, value: string | number, unit: string, icon: any, color: string, active: boolean }) => (
+  <div className={`bg-slate-800/80 border border-slate-700 p-4 rounded-3xl flex flex-col items-center justify-center space-y-1 relative overflow-hidden transition-all ${active ? 'opacity-100' : 'opacity-25'}`}>
+    <div className={`absolute top-0 left-0 w-1 h-full ${active ? color : 'bg-slate-600'}`}></div>
+    <Icon size={16} className="text-slate-500 mb-1" />
+    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{label}</span>
+    <div className="flex items-baseline gap-1">
+      <span className="text-xl font-oswald font-bold text-white">{active ? value : '--'}</span>
+      <span className="text-[9px] font-bold text-slate-500">{unit}</span>
+    </div>
+  </div>
+);
 
-  const activeVehicle = vehicle || (isAddingQuickVehicle ? quickEntry : null);
+const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onSelectCode, vehicle }) => {
+  const [mode, setMode] = useState<'REALTIME' | 'DTC' | 'TERMINAL'>('REALTIME');
+  const [status, setStatus] = useState<'IDLE' | 'LINKING' | 'AT_INIT' | 'ECU_SYNC' | 'READY' | 'ERROR'>('IDLE');
+  const [logs, setLogs] = useState<{ cmd: string, res: string, time: string }[]>([]);
+  const [engineOn, setEngineOn] = useState(false);
+  const [pids, setPids] = useState({ rpm: 0, temp: 0, volt: 12.4 });
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // Validação Alinhada com Testes
-  const getYearError = (y: string) => {
-    if (!y) return null;
-    const num = parseInt(y);
-    if (isNaN(num) || y.length !== 4) return "4 dígitos necessários";
-    if (num < 1970) return "Ano < 1970 inválido";
-    if (num > 2025) return "Ano > 2025 inválido";
-    return null;
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  const addLog = (cmd: string, res: string) => {
+    const time = new Date().toLocaleTimeString('pt-BR', { hour12: false, minute: '2-digit', second: '2-digit' });
+    setLogs(prev => [{ cmd, res, time }, ...prev].slice(0, 10));
   };
 
-  const isQuickFormValid = quickEntry.make.length >= 2 && quickEntry.model.length >= 2 && !getYearError(quickEntry.year) && quickEntry.year.length === 4;
-
-  const startDiagnosis = () => {
-    setStatus('CONNECTING');
-    setSignalStrength(0);
-    setProgress(0);
-
-    const duration = 2500;
-    const intervalTime = 50;
-    const steps = duration / intervalTime;
-    const increment = 100 / steps;
+  // Ciclo de Vida da Conexão Realística
+  const startConnection = async () => {
+    setStatus('LINKING');
+    addLog("BT_SEARCH", "BUSCANDO OBDII...");
     
-    let currentStrength = 0;
-    const signalInterval = setInterval(() => {
-      currentStrength += increment + (Math.random() * 5 - 2);
-      const displayStrength = Math.min(100, Math.floor(currentStrength));
-      setSignalStrength(displayStrength);
-      if (currentStrength >= 100) clearInterval(signalInterval);
-    }, intervalTime);
-
-    setTimeout(() => {
-      clearInterval(signalInterval);
-      setSignalStrength(100);
-      setStatus('SCANNING');
-    }, 2500);
+    await new Promise(r => setTimeout(r, 1500));
+    setStatus('AT_INIT');
+    addLog("ATZ", "ELM327 v2.1 OK");
+    addLog("ATE0", "ECHO OFF OK");
+    addLog("ATSP0", "PROTOCOL AUTO OK");
+    
+    await new Promise(r => setTimeout(r, 1500));
+    setStatus('ECU_SYNC');
+    addLog("01 00", "41 00 BE 1F B8 10"); // Supported PIDs query
+    
+    await new Promise(r => setTimeout(r, 1000));
+    setStatus('READY');
+    handleSpeak("Interface sincronizada. Barramento CAN ativo na porta 8000.");
   };
 
+  const handleNewDiagnosis = () => {
+    setStatus('IDLE');
+    setEngineOn(false);
+    setPids({ rpm: 0, temp: 0, volt: 12.4 });
+    setLogs([]);
+    handleSpeak("Sessão finalizada. Iniciando novo ciclo de diagnóstico.");
+  };
+
+  // Simulador de Leitura de PIDs Hex (Request/Response)
   useEffect(() => {
-    if (status === 'SCANNING') {
-      const interval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setStatus('DONE');
-            return 100;
-          }
-          return prev + 4;
-        });
-      }, 120);
-      return () => clearInterval(interval);
+    let interval: any;
+    if (status === 'READY') {
+      interval = setInterval(() => {
+        if (engineOn) {
+          // Simula resposta HEX do RPM (PID 01 0C)
+          // Ex: 41 0C 1A F8 -> (1A*256 + F8)/4 = 1726 RPM
+          const rpmHexA = (10 + Math.floor(Math.random() * 5)).toString(16).toUpperCase();
+          const rpmHexB = Math.floor(Math.random() * 255).toString(16).toUpperCase();
+          const res = `41 0C ${rpmHexA} ${rpmHexB}`;
+          const val = decodeOBD2Response('010C', res);
+          
+          setPids(prev => ({ ...prev, rpm: val, volt: 14.1 + (Math.random() * 0.2), temp: 92 }));
+          addLog("01 0C", res);
+        } else {
+          setPids(prev => ({ ...prev, rpm: 0, volt: 12.4, temp: 45 }));
+          addLog("01 0C", "SEARCHING...");
+        }
+      }, 2000);
     }
-  }, [status]);
+    return () => clearInterval(interval);
+  }, [status, engineOn]);
 
-  const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      setCapturedImage(reader.result as string);
-      setAnalyzingImage(true);
-      const vehicleStr = activeVehicle?.make ? `${activeVehicle.make} ${activeVehicle.model} (${activeVehicle.year})` : undefined;
-      const result = await analyzePartImage((reader.result as string).split(',')[1], file.type, vehicleStr);
-      setAnalysisResult(result);
-      setAnalyzingImage(false);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const resetVisual = () => {
-    setCapturedImage(null);
-    setAnalysisResult(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  const handleSpeak = async (text: string) => {
+    if (isSpeaking) return;
+    setIsSpeaking(true);
+    if (!audioContextRef.current) {
+      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      audioContextRef.current = new AudioCtx({ sampleRate: 24000 });
+    }
+    const audioBytes = await generateSpeech(text);
+    if (audioBytes && audioContextRef.current) {
+      const buffer = await decodeAudioData(audioBytes, audioContextRef.current, 24000, 1);
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioContextRef.current.destination);
+      source.onended = () => setIsSpeaking(false);
+      source.start();
+    } else {
+      setIsSpeaking(false);
+    }
   };
 
   return (
-    <div className="p-6 flex flex-col h-full space-y-6">
-      <header className="flex justify-between items-start">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-oswald text-white uppercase tracking-tight">Diagnóstico</h2>
-          <div className="flex items-center gap-2">
-             <div className={`w-2 h-2 rounded-full ${status !== 'IDLE' ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`}></div>
-             <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">
-               Status: {status === 'IDLE' ? 'Pronto' : 'Em curso'}
-             </p>
-          </div>
+    <div className="p-6 flex flex-col h-full space-y-5 bg-slate-900 pb-24 overflow-hidden">
+      <header className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-oswald text-white uppercase tracking-tight">OBDII Real-Link</h2>
+          <p className="text-[9px] text-blue-500 font-black uppercase tracking-widest">Protocolo: ISO 15765-4 CAN</p>
+        </div>
+        <div className="flex gap-2 bg-slate-950 p-2 rounded-2xl border border-slate-800">
+          <StatusLed label="LINK" color="bg-blue-500" active={status !== 'IDLE' && status !== 'ERROR'} blinking={status === 'LINKING'} />
+          <StatusLed label="ECU" color="bg-emerald-500" active={status === 'READY'} blinking={status === 'ECU_SYNC'} />
+          <StatusLed label="BUS" color="bg-amber-500" active={engineOn} blinking={engineOn} />
         </div>
       </header>
 
-      <div className="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700 shadow-xl relative z-10">
-        <button onClick={() => setMode('OBD2')} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${mode === 'OBD2' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}><Bluetooth size={16} /> OBD2</button>
-        <button onClick={() => setMode('VISUAL')} className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${mode === 'VISUAL' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}><Camera size={16} /> VISUAL</button>
+      {status === 'READY' && (
+        <button 
+          onClick={handleNewDiagnosis}
+          className="flex items-center justify-center gap-2 w-full py-2 bg-slate-800 border border-slate-700 rounded-xl text-[10px] font-black text-slate-300 uppercase tracking-widest hover:bg-slate-700 transition-colors"
+        >
+          <RotateCcw size={14} /> Novo Diagnóstico
+        </button>
+      )}
+
+      <div className="bg-slate-800/50 p-1.5 rounded-2xl border border-slate-700/50 flex">
+        {['REALTIME', 'DTC', 'TERMINAL'].map(m => (
+          <button 
+            key={m} 
+            onClick={() => setMode(m as any)}
+            disabled={status !== 'READY' && m !== 'TERMINAL'}
+            className={`flex-1 py-2.5 rounded-xl font-black text-[9px] uppercase transition-all ${mode === m ? 'bg-blue-600 text-white' : 'text-slate-500 opacity-50'}`}
+          >
+            {m}
+          </button>
+        ))}
       </div>
 
-      {!activeVehicle && !isAddingQuickVehicle ? (
-        <div className="flex-1 flex flex-col items-center justify-center space-y-6 animate-in fade-in duration-500">
-          <div className="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center text-slate-600 border-2 border-slate-700 border-dashed"><Car size={40} /></div>
-          <p className="text-slate-500 text-xs px-12 text-center leading-relaxed">Identifique o carro para garantir que os testes de integridade passem.</p>
-          <button onClick={() => setIsAddingQuickVehicle(true)} className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-blue-400 font-bold rounded-2xl flex items-center gap-2 border border-blue-500/30 transition-all active:scale-95"><PlusCircle size={20} /> INSERIR DADOS</button>
-        </div>
-      ) : isAddingQuickVehicle && !vehicle ? (
-        <div className="bg-slate-800 border border-slate-700 p-6 rounded-3xl shadow-xl space-y-4 animate-in slide-in-from-bottom-4 duration-300">
-          <div className="flex items-center gap-2 mb-2"><Car className="text-blue-500" size={20} /><h4 className="text-white font-bold uppercase text-xs tracking-widest">Novo Diagnóstico</h4></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <input value={quickEntry.make} onChange={e => setQuickEntry({...quickEntry, make: e.target.value})} className={`w-full bg-slate-900 border ${quickEntry.make && quickEntry.make.length < 2 ? 'border-red-500' : 'border-slate-700'} rounded-xl p-3 text-sm text-white outline-none focus:border-blue-500`} placeholder="Marca" />
+      <div className="flex-1 overflow-y-auto">
+        {status === 'IDLE' ? (
+          <div className="flex flex-col items-center justify-center h-full space-y-8">
+            <div className="w-40 h-40 bg-slate-800 rounded-[3rem] flex items-center justify-center border-2 border-slate-700 border-dashed animate-pulse">
+              <Bluetooth size={48} className="text-slate-600" />
             </div>
-            <div className="space-y-1">
-              <input value={quickEntry.model} onChange={e => setQuickEntry({...quickEntry, model: e.target.value})} className={`w-full bg-slate-900 border ${quickEntry.model && quickEntry.model.length < 2 ? 'border-red-500' : 'border-slate-700'} rounded-xl p-3 text-sm text-white outline-none focus:border-blue-500`} placeholder="Modelo" />
+            <div className="text-center px-8">
+              <h3 className="text-white font-bold uppercase text-sm">Aguardando Conexão</h3>
+              <p className="text-slate-500 text-[10px] mt-2 uppercase tracking-widest">Ligue a ignição e conecte o adaptador ELM327 na porta OBD2.</p>
             </div>
+            <button onClick={startConnection} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl uppercase text-xs tracking-widest active:scale-95 transition-all">
+              Sincronizar Interface
+            </button>
           </div>
-          <div className="space-y-1">
-            <input value={quickEntry.year} onChange={e => setQuickEntry({...quickEntry, year: e.target.value})} className={`w-full bg-slate-900 border ${getYearError(quickEntry.year) ? 'border-red-500' : 'border-slate-700'} rounded-xl p-3 text-sm text-white outline-none focus:border-blue-500`} placeholder="Ano (1970-2025)" type="number" />
-            {getYearError(quickEntry.year) && <p className="text-[9px] text-red-500 font-bold px-1">{getYearError(quickEntry.year)}</p>}
-          </div>
-          <button disabled={!isQuickFormValid} onClick={() => setIsAddingQuickVehicle(false)} className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95"><Save size={18} /> CONFIRMAR DADOS</button>
-        </div>
-      ) : (
-        <div className="flex-1 flex flex-col h-full space-y-4">
-          <div className="bg-slate-800/50 border border-slate-700 p-4 rounded-2xl flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-600/20 p-2 rounded-lg text-blue-400"><Car size={18} /></div>
-              <div>
-                <p className="text-[10px] text-slate-500 font-bold uppercase">Veículo Ativo</p>
-                <h4 className="text-white font-bold text-sm leading-tight">{activeVehicle?.make} {activeVehicle?.model} ({activeVehicle?.year})</h4>
-              </div>
-            </div>
-            <button onClick={() => { if (vehicle) onNavigate('SETTINGS'); else setIsAddingQuickVehicle(true); }} className="p-2 text-slate-500 hover:text-blue-400 transition-colors"><SettingsIcon size={18} /></button>
-          </div>
+        ) : (
+          <div className="space-y-4 h-full flex flex-col">
+            {mode === 'REALTIME' && (
+              <>
+                <div className={`p-5 rounded-3xl border transition-all flex items-center justify-between ${engineOn ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-800/50 border-slate-700'}`}>
+                   <div className="flex items-center gap-4">
+                      <div className={`p-4 rounded-2xl ${engineOn ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-500'}`}>
+                        <Cpu size={24} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-slate-500 font-black uppercase">Fluxo da ECU</p>
+                        <p className={`font-bold text-sm ${engineOn ? 'text-emerald-500' : 'text-slate-400'}`}>
+                          {engineOn ? 'STREAMING ATIVO' : 'IGNIÇÃO OK / MOTOR OFF'}
+                        </p>
+                      </div>
+                   </div>
+                   <button onClick={() => setEngineOn(!engineOn)} className={`p-4 rounded-2xl transition-all shadow-xl active:scale-90 ${engineOn ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'}`}>
+                     <Power size={24} />
+                   </button>
+                </div>
 
-          {mode === 'OBD2' ? (
-            <div className="flex-1 flex flex-col h-full">
-              {status === 'IDLE' && (
-                <div className="flex-1 flex flex-col items-center justify-center space-y-6">
-                  <div className="w-32 h-32 bg-slate-800 rounded-full flex items-center justify-center border-4 border-slate-700 border-dashed animate-pulse"><Bluetooth size={48} className="text-blue-500" /></div>
-                  <button onClick={startDiagnosis} className="px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl flex items-center gap-3 transition-all shadow-xl shadow-blue-500/20 active:scale-95">CONECTAR SCANNER</button>
+                <div className="grid grid-cols-2 gap-3">
+                  <PIDGauge label="Rotação (RPM)" value={pids.rpm} unit="RPM" icon={Activity} color="bg-blue-500" active={engineOn} />
+                  <PIDGauge label="Voltagem" value={pids.volt.toFixed(1)} unit="V" icon={Zap} color="bg-emerald-500" active={true} />
+                  <PIDGauge label="Temp. Motor" value={pids.temp} unit="°C" icon={Thermometer} color="bg-red-500" active={true} />
+                  <PIDGauge label="Protocolo" value="CAN" unit="BUS" icon={Database} color="bg-slate-500" active={true} />
                 </div>
-              )}
-              {status === 'CONNECTING' && <div className="flex-1 flex flex-col items-center justify-center space-y-8 animate-in fade-in"><div className="w-44 h-44 rounded-full border-8 border-blue-600/20 flex items-center justify-center"><Bluetooth size={40} className="text-blue-500 animate-bounce" /></div><p className="text-white font-bold uppercase tracking-widest">Sincronizando via Bluetooth...</p></div>}
-              {status === 'SCANNING' && <div className="flex-1 flex flex-col items-center justify-center space-y-8 animate-in fade-in"><div className="w-44 h-44 rounded-full border-8 border-slate-800 border-t-blue-500 flex items-center justify-center animate-spin"><span className="text-2xl font-oswald font-bold text-white -rotate-90">{progress}%</span></div><p className="text-white font-bold uppercase tracking-widest">Varrendo Módulos Eletrônicos...</p></div>}
-              {status === 'DONE' && (
-                <div className="flex-1 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-2xl flex items-start gap-3 mb-6"><AlertCircle className="text-red-500 shrink-0 mt-1" size={24} /><div><h4 className="font-bold text-red-500 uppercase text-xs">Erro Confirmado</h4><p className="text-slate-400 text-[11px] mt-1">Dados de integridade validados com sucesso.</p></div></div>
-                  <button onClick={() => onSelectCode('P0301')} className="w-full bg-slate-800 hover:bg-slate-750 border border-slate-700 p-6 rounded-3xl flex items-center justify-between transition-all group active:scale-95 shadow-xl"><div className="flex items-center gap-5"><div className="bg-red-600 p-2.5 rounded-xl text-white font-bold text-sm shadow-lg ring-4 ring-red-600/10">P0301</div><div className="text-left"><p className="font-bold text-white text-base">Falha de Ignição</p><p className="text-xs text-slate-500">Cilindro 1</p></div></div><ChevronRight className="text-slate-600 group-hover:text-blue-400 transition-all" /></button>
+
+                <div className="bg-slate-800/40 p-4 rounded-2xl border border-slate-700 mt-auto">
+                   <div className="flex items-center gap-2 mb-2">
+                     <Terminal size={12} className="text-blue-500" />
+                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Raw Traffic (OBD-Terminal)</span>
+                   </div>
+                   <div className="font-mono text-[10px] text-emerald-500 space-y-1">
+                      {logs.slice(0, 2).map((l, i) => (
+                        <div key={i} className="flex gap-2">
+                          <span className="text-slate-600">[{l.time}]</span>
+                          <span className="text-blue-400">&gt; {l.cmd}</span>
+                          <span className="text-emerald-400">{l.res}</span>
+                        </div>
+                      ))}
+                   </div>
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col space-y-6 h-full pt-4">
-              {!capturedImage ? (
-                <div className="flex-1 flex flex-col items-center justify-center space-y-6 text-center">
-                  <div className="w-36 h-36 bg-slate-800 rounded-[2rem] flex items-center justify-center border-2 border-slate-700 border-dashed shadow-2xl"><Camera size={52} className="text-slate-600" /></div>
-                  <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleCapture} />
-                  <button onClick={() => fileInputRef.current?.click()} className="px-10 py-5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl flex items-center gap-3 transition-all shadow-2xl active:scale-95"> ANALISAR PEÇA COM IA</button>
+              </>
+            )}
+
+            {mode === 'TERMINAL' && (
+              <div className="bg-black border border-slate-800 rounded-3xl p-5 flex-1 flex flex-col font-mono">
+                <div className="flex-1 overflow-y-auto space-y-2 text-[11px]">
+                  <p className="text-slate-500"># OFICINA IA - OBD2 TERMINAL v1.0</p>
+                  <p className="text-slate-500"># CONNECTING TO ELM327...</p>
+                  {logs.map((l, i) => (
+                    <div key={i} className="space-y-0.5 border-l border-slate-800 pl-3">
+                      <div className="flex justify-between opacity-40">
+                        <span className="text-[8px] text-slate-500 uppercase">Request</span>
+                        <span className="text-[8px] text-slate-500">{l.time}</span>
+                      </div>
+                      <p className="text-blue-400 font-bold">&gt; {l.cmd}</p>
+                      <p className="text-emerald-400">{l.res}</p>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="flex-1 space-y-5 animate-in fade-in">
-                  <div className="relative rounded-3xl overflow-hidden aspect-square border-2 border-slate-700 bg-slate-800 shadow-2xl"><img src={capturedImage} alt="Captura" className="w-full h-full object-cover" /><button onClick={resetVisual} className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-red-500 transition-colors"><X size={20} /></button></div>
-                  {analyzingImage ? (
-                    <div className="bg-slate-800/80 p-10 rounded-3xl border border-slate-700 flex flex-col items-center justify-center space-y-4"><Loader2 size={44} className="text-blue-500 animate-spin" /><p className="text-white font-bold uppercase text-xs">Mestre IA Analisando Integridade...</p></div>
-                  ) : (
-                    <div className="bg-white rounded-3xl p-6 space-y-5 animate-in slide-in-from-bottom-6 border border-slate-200"><div className="prose prose-sm text-slate-800 font-semibold italic border-l-4 border-blue-500 pl-4 py-2">{analysisResult}</div><button onClick={() => onNavigate('DASHBOARD')} className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl text-xs active:scale-95 transition-all">SALVAR PARECER</button></div>
-                  )}
+                <div className="pt-4 mt-4 border-t border-slate-800 flex items-center gap-3">
+                  <div className="text-blue-500 font-bold text-xs">&gt;_</div>
+                  <input readOnly placeholder="Comando travado em modo automático" className="bg-transparent border-none text-slate-500 text-xs w-full outline-none italic" />
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+
+            {mode === 'DTC' && (
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-6">
+                <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/20">
+                  <ShieldAlert size={40} className="text-emerald-500" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold uppercase text-sm">Memória da ECU Limpa</h3>
+                  <p className="text-slate-500 text-[10px] mt-2 uppercase tracking-widest leading-relaxed">Nenhum código de falha (DTC) detectado no barramento principal.</p>
+                </div>
+                <button onClick={() => { addLog("04", "OK"); handleSpeak("Limpando memória de erros."); }} className="w-full py-4 bg-slate-800 text-red-500 font-black rounded-xl text-[10px] uppercase border border-red-500/20 flex items-center justify-center gap-2">
+                   <Trash2 size={16} /> Forçar Reset de Falhas
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {status !== 'IDLE' && (
+        <button onClick={() => { setStatus('IDLE'); setEngineOn(false); }} className="w-full py-3 text-slate-600 font-black uppercase text-[9px] tracking-widest mt-auto border-t border-slate-800 pt-4 hover:text-red-400 transition-colors">Encerrar Sessão OBD2</button>
       )}
     </div>
   );
