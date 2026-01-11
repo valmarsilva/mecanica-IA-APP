@@ -48,8 +48,43 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
     setLogs(prev => [{ cmd, res, time }, ...prev].slice(0, 10));
   };
 
+  /**
+   * Sintetiza um som sutil de conexão Bluetooth (Bip-Bip ascendente)
+   */
+  const playConnectSound = () => {
+    try {
+      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioCtx();
+      }
+      const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
+
+      const playTone = (freq: number, start: number, duration: number) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, start);
+        g.gain.setValueAtTime(0, start);
+        g.gain.linearRampToValueAtTime(0.05, start + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, start + duration);
+        osc.connect(g);
+        g.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + duration);
+      };
+
+      const now = ctx.currentTime;
+      playTone(523.25, now, 0.1); // Nota Dó (C5)
+      playTone(659.25, now + 0.1, 0.15); // Nota Mi (E5)
+    } catch (e) {
+      console.warn("Audio synthesis unavailable");
+    }
+  };
+
   // Ciclo de Vida da Conexão Realística
   const startConnection = async () => {
+    playConnectSound(); // Feedback auditivo imediato
     setStatus('LINKING');
     addLog("BT_SEARCH", "BUSCANDO OBDII...");
     
@@ -83,7 +118,6 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
       interval = setInterval(() => {
         if (engineOn) {
           // Simula resposta HEX do RPM (PID 01 0C)
-          // Ex: 41 0C 1A F8 -> (1A*256 + F8)/4 = 1726 RPM
           const rpmHexA = (10 + Math.floor(Math.random() * 5)).toString(16).toUpperCase();
           const rpmHexB = Math.floor(Math.random() * 255).toString(16).toUpperCase();
           const res = `41 0C ${rpmHexA} ${rpmHexB}`;

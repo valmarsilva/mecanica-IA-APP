@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Screen, UserProfile, UserStatus, Module, SystemCategory } from '../types';
 import { getDetailedLesson } from '../geminiService';
+import { ValtecAPI } from '../services/apiService';
 import { 
   ArrowLeft, Users, Check, X, Search, Video, FileText, Plus, Trash2, 
   Edit3, Save, Globe, Database, UserCheck, UserMinus, LayoutDashboard,
-  Cpu, Zap, BookOpen, Loader2, Sparkles, AlertCircle
+  Cpu, Zap, BookOpen, Loader2, Sparkles, AlertCircle, CloudOff, Cloud
 } from 'lucide-react';
 
 interface AdminScreenProps {
@@ -21,8 +22,22 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onNavigate, allUsers, modules
   const [search, setSearch] = useState('');
   const [editingMod, setEditingMod] = useState<Partial<Module> | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isOnline, setIsOnline] = useState(false);
 
-  const handleSaveModule = () => {
+  useEffect(() => {
+    // Simula verificação de saúde da API na Hostinger
+    const checkApi = async () => {
+      try {
+        const response = await fetch('http://seu-dominio-na-hostinger.com/api/health/');
+        setIsOnline(response.ok);
+      } catch {
+        setIsOnline(false);
+      }
+    };
+    checkApi();
+  }, []);
+
+  const handleSaveModule = async () => {
     if (!editingMod?.title) return;
     const isNew = !editingMod.id;
     const newMod = {
@@ -31,9 +46,19 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onNavigate, allUsers, modules
       createdAt: editingMod.createdAt || new Date().toISOString(),
     } as Module;
 
+    // Salva na Nuvem/Hostinger
+    await ValtecAPI.saveModule(newMod);
+
     const updated = isNew ? [...modules, newMod] : modules.map(m => m.id === newMod.id ? newMod : m);
     onUpdateModules(updated);
     setEditingMod(null);
+  };
+
+  const handleDeleteModule = async (id: string) => {
+    if (confirm('Deseja excluir esta aula permanentemente?')) {
+      await ValtecAPI.deleteModule(id);
+      onUpdateModules(modules.filter(m => m.id !== id));
+    }
   };
 
   const handleGenerateContent = async () => {
@@ -58,7 +83,13 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onNavigate, allUsers, modules
           </button>
           <div>
             <h2 className="text-xl font-oswald text-white uppercase tracking-tight">Comando Valtec</h2>
-            <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest">Painel Administrativo v3.0</p>
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest">Painel Administrativo v3.0</p>
+              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[7px] font-black uppercase ${isOnline ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-800 text-slate-600'}`}>
+                {isOnline ? <Cloud size={8} /> : <CloudOff size={8} />}
+                {isOnline ? 'Hostinger Online' : 'Modo Offline'}
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -113,7 +144,6 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onNavigate, allUsers, modules
                       <button 
                         onClick={() => onUpdateUserStatus(user.id, 'approved')} 
                         className="p-2.5 bg-emerald-600 text-white rounded-xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
-                        title="Aprovar Acesso"
                       >
                         <UserCheck size={16} />
                       </button>
@@ -121,7 +151,6 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onNavigate, allUsers, modules
                       <button 
                         onClick={() => onUpdateUserStatus(user.id, 'blocked')} 
                         className="p-2.5 bg-red-600/10 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all"
-                        title="Bloquear Acesso"
                       >
                         <UserMinus size={16} />
                       </button>
@@ -140,92 +169,63 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onNavigate, allUsers, modules
                   <button onClick={() => setEditingMod(null)} className="p-2 text-slate-500 hover:text-white"><X size={18} /></button>
                 </div>
                 
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Título da Aula Técnica</label>
-                  <input value={editingMod.title} onChange={e => setEditingMod({...editingMod, title: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:border-blue-500 outline-none" placeholder="Ex: Diagnóstico de ABS via Rede CAN" />
-                </div>
+                <input value={editingMod.title} onChange={e => setEditingMod({...editingMod, title: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:border-blue-500 outline-none" placeholder="Ex: Diagnóstico de ABS via Rede CAN" />
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Sistema</label>
-                    <select value={editingMod.category} onChange={e => setEditingMod({...editingMod, category: e.target.value as any})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-[10px] font-black uppercase text-slate-400 outline-none">
-                      <option value="MECANICA">Mecânica</option>
-                      <option value="ELETRICA">Elétrica</option>
-                      <option value="ELETRONICA">Eletrônica</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Nível</label>
-                    <select value={editingMod.level} onChange={e => setEditingMod({...editingMod, level: e.target.value as any})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-[10px] font-black uppercase text-slate-400 outline-none">
-                      <option value="Iniciante">Iniciante</option>
-                      <option value="Técnico">Técnico</option>
-                      <option value="Avançado">Avançado</option>
-                      <option value="Expert">Expert</option>
-                    </select>
-                  </div>
+                  <select value={editingMod.category} onChange={e => setEditingMod({...editingMod, category: e.target.value as any})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-[10px] font-black uppercase text-slate-400 outline-none">
+                    <option value="MECANICA">Mecânica</option>
+                    <option value="ELETRICA">Elétrica</option>
+                    <option value="ELETRONICA">Eletrônica</option>
+                  </select>
+                  <select value={editingMod.level} onChange={e => setEditingMod({...editingMod, level: e.target.value as any})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-[10px] font-black uppercase text-slate-400 outline-none">
+                    <option value="Iniciante">Iniciante</option>
+                    <option value="Técnico">Técnico</option>
+                    <option value="Avançado">Avançado</option>
+                    <option value="Expert">Expert</option>
+                  </select>
+                </div>
+
+                <div className="relative">
+                  <Video className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
+                  <input value={editingMod.videoUrl} onChange={e => setEditingMod({...editingMod, videoUrl: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-xs text-white outline-none" placeholder="YouTube Link" />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Link de Vídeo (YouTube Embed)</label>
-                  <div className="relative">
-                    <Video className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
-                    <input value={editingMod.videoUrl} onChange={e => setEditingMod({...editingMod, videoUrl: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-xs text-white outline-none" placeholder="https://www.youtube.com/embed/..." />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Manual Técnico (Guia PDF)</label>
-                    <button 
-                      onClick={handleGenerateContent}
-                      disabled={isGenerating || !editingMod.title}
-                      className="flex items-center gap-1.5 text-[9px] font-black text-blue-500 uppercase bg-blue-500/10 px-2 py-1 rounded-lg hover:bg-blue-500 hover:text-white transition-all disabled:opacity-30"
-                    >
-                      {isGenerating ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />} Gerar via IA
+                  <div className="flex justify-between items-center">
+                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Manual Técnico</label>
+                    <button onClick={handleGenerateContent} disabled={isGenerating} className="text-[9px] font-black text-blue-500 bg-blue-500/10 px-2 py-1 rounded-lg">
+                      {isGenerating ? 'Gerando...' : 'Gerar via IA'}
                     </button>
                   </div>
-                  <textarea value={editingMod.desc} onChange={e => setEditingMod({...editingMod, desc: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white min-h-[120px] outline-none font-mono" placeholder="Escreva os detalhes técnicos ou gere via IA..." />
+                  <textarea value={editingMod.desc} onChange={e => setEditingMod({...editingMod, desc: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white min-h-[120px] outline-none" />
                 </div>
 
-                <button onClick={handleSaveModule} className="w-full py-4 bg-blue-600 text-white font-black rounded-xl text-[10px] uppercase shadow-xl shadow-blue-600/30 active:scale-95 transition-all">
-                  Sincronizar com a Academia Valtec
+                <button onClick={handleSaveModule} className="w-full py-4 bg-blue-600 text-white font-black rounded-xl text-[10px] uppercase shadow-xl shadow-blue-600/30">
+                  Sincronizar com a Nuvem
                 </button>
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="bg-blue-600/10 border border-blue-500/20 p-4 rounded-2xl flex items-center gap-4">
-                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-                    <Globe size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-white">Pronto para Hostinger</h4>
-                    <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest">Sincronização persistente via LocalDB</p>
-                  </div>
-                </div>
-
-                <button onClick={() => setEditingMod({ title: '', category: 'MECANICA', level: 'Técnico', videoUrl: '', desc: '', hasPdf: true, unlocked: true })} className="w-full py-6 border-2 border-dashed border-slate-800 rounded-[2rem] flex flex-col items-center justify-center gap-3 text-slate-600 hover:text-blue-500 hover:border-blue-500 transition-all group">
-                  <div className="p-3 bg-slate-900 rounded-full group-hover:bg-blue-600/10 transition-all">
-                    <Plus size={24} />
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">Criar Nova Aula Técnica</span>
+                <button onClick={() => setEditingMod({ title: '', category: 'MECANICA', level: 'Técnico', videoUrl: '', desc: '', hasPdf: true, unlocked: true })} className="w-full py-6 border-2 border-dashed border-slate-800 rounded-[2rem] flex flex-col items-center justify-center gap-3 text-slate-600 hover:text-blue-500 transition-all">
+                  <Plus size={24} />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">Criar Nova Aula</span>
                 </button>
 
-                <div className="space-y-3 pt-2">
-                  <h3 className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Aulas Sincronizadas ({modules.length})</h3>
+                <div className="space-y-3">
                   {modules.map(mod => (
                     <div key={mod.id} className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex items-center justify-between group">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className={`p-3 rounded-xl shrink-0 ${mod.category === 'MECANICA' ? 'bg-blue-500/10 text-blue-500' : mod.category === 'ELETRICA' ? 'bg-amber-500/10 text-amber-500' : 'bg-purple-500/10 text-purple-500'}`}>
+                      <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-xl ${mod.category === 'MECANICA' ? 'bg-blue-500/10 text-blue-500' : 'bg-amber-500/10 text-amber-500'}`}>
                           {mod.videoUrl ? <Video size={18} /> : <FileText size={18} />}
                         </div>
-                        <div className="min-w-0">
-                          <h4 className="font-bold text-xs text-white truncate">{mod.title}</h4>
-                          <p className="text-[9px] text-slate-500 font-bold uppercase">{mod.category} • {mod.level}</p>
+                        <div>
+                          <h4 className="font-bold text-xs text-white">{mod.title}</h4>
+                          <p className="text-[9px] text-slate-500 font-bold uppercase">{mod.category}</p>
                         </div>
                       </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditingMod(mod)} className="p-2 text-slate-500 hover:text-white transition-colors"><Edit3 size={16} /></button>
-                        <button onClick={() => onUpdateModules(modules.filter(m => m.id !== mod.id))} className="p-2 text-slate-500 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditingMod(mod)} className="p-2 text-slate-500 hover:text-white"><Edit3 size={16} /></button>
+                        <button onClick={() => handleDeleteModule(mod.id)} className="p-2 text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
                       </div>
                     </div>
                   ))}
@@ -236,9 +236,9 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onNavigate, allUsers, modules
         )}
       </div>
 
-      <footer className="p-4 bg-slate-900 border-t border-slate-800 flex justify-between items-center text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] shrink-0">
+      <footer className="p-4 bg-slate-900 border-t border-slate-800 flex justify-between items-center text-[8px] font-black text-slate-600 uppercase tracking-[0.3em]">
         <div className="flex items-center gap-2"><Database size={12} /><span>Cloud Persistence: Active</span></div>
-        <div className="flex items-center gap-2 text-emerald-500"><Zap size={12} fill="currentColor" /><span>System Nominal</span></div>
+        <div className="flex items-center gap-2 text-emerald-500"><Zap size={12} fill="currentColor" /><span>Hostinger Bridge Ready</span></div>
       </footer>
     </div>
   );

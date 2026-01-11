@@ -15,15 +15,9 @@ import AdminScreen from './screens/AdminScreen';
 import CheckoutScreen from './screens/CheckoutScreen';
 import Navigation from './components/Navigation';
 import Sidebar from './components/Sidebar';
-import { Menu, Bell, Hammer } from 'lucide-react';
+import { ValtecAPI } from './services/apiService';
+import { Menu, Bell, Hammer, Loader2 } from 'lucide-react';
 import { Screen, UserProfile, UserStatus, Module } from './types';
-
-// Conteúdo inicial que será salvo no "Banco de Dados" (LocalStorage)
-const INITIAL_MODULES: Module[] = [
-  { id: '1', title: 'Manutenção de Injeção GDI', category: 'MECANICA', level: 'Técnico', unlocked: true, videoUrl: 'https://www.youtube.com/embed/vEwS_vH9G7o', desc: 'Guia completo sobre bicos injetores de alta pressão.', hasPdf: true, createdAt: new Date().toISOString() },
-  { id: '2', title: 'Diagnóstico de Alternadores', category: 'ELETRICA', level: 'Técnico', unlocked: true, videoUrl: 'https://www.youtube.com/embed/v-T7tXU0tG4', desc: 'Como testar alternadores pilotados via PWM.', hasPdf: true, createdAt: new Date().toISOString() },
-  { id: '3', title: 'Análise de Redes CAN', category: 'ELETRONICA', level: 'Expert', unlocked: true, videoUrl: 'https://www.youtube.com/embed/v7qH9Xv-M-E', desc: 'Osciloscópio aplicado ao diagnóstico de redes de dados.', hasPdf: true, createdAt: new Date().toISOString() },
-];
 
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('WELCOME');
@@ -31,61 +25,47 @@ const App: React.FC = () => {
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(true);
 
   useEffect(() => {
-    // Sincronização com o "Banco de Dados" (LocalStorage para Hostinger)
-    const savedUsers = localStorage.getItem('valtec_db_users');
-    const savedModules = localStorage.getItem('valtec_db_modules');
-    const sessionUser = localStorage.getItem('valtec_session');
-    
-    if (savedUsers) {
-      setAllUsers(JSON.parse(savedUsers));
-    } else {
-      // Cria o administrador padrão no primeiro acesso
-      const admin: UserProfile = {
-        id: 'admin-master',
-        email: 'admin@valtec.com',
-        name: 'Administrador Valtec',
-        role: 'admin',
-        status: 'approved',
-        level: 'Especialista Master',
-        xp: 9999,
-        premium: true,
-        garage: [],
-      };
-      const initialUsers = [admin];
-      setAllUsers(initialUsers);
-      localStorage.setItem('valtec_db_users', JSON.stringify(initialUsers));
-    }
+    const initApp = async () => {
+      setIsSyncing(true);
+      
+      // 1. Tenta carregar dados da "Nuvem" (API)
+      const cloudModules = await ValtecAPI.getModules();
+      const cloudUsers = await ValtecAPI.getUsers();
+      
+      setModules(cloudModules);
+      setAllUsers(cloudUsers);
 
-    if (savedModules) {
-      setModules(JSON.parse(savedModules));
-    } else {
-      setModules(INITIAL_MODULES);
-      localStorage.setItem('valtec_db_modules', JSON.stringify(INITIAL_MODULES));
-    }
-
-    if (sessionUser) {
-      const parsedSession = JSON.parse(sessionUser);
-      // Verifica se o usuário ainda é válido e aprovado
-      const usersList = JSON.parse(localStorage.getItem('valtec_db_users') || '[]');
-      const user = usersList.find((u: UserProfile) => u.id === parsedSession.id);
-      if (user && user.status === 'approved') {
-        setCurrentUser(user);
-        setCurrentScreen('DASHBOARD');
+      // 2. Verifica Sessão
+      const sessionUser = localStorage.getItem('valtec_session');
+      if (sessionUser) {
+        const parsed = JSON.parse(sessionUser);
+        const user = cloudUsers.find((u: UserProfile) => u.id === parsed.id);
+        if (user && user.status === 'approved') {
+          setCurrentUser(user);
+          setCurrentScreen('DASHBOARD');
+        }
       }
-    }
+      
+      setIsSyncing(false);
+    };
+
+    initApp();
   }, []);
 
-  const handleUpdateModules = (newModules: Module[]) => {
+  const handleUpdateModules = async (newModules: Module[]) => {
     setModules(newModules);
+    // Aqui enviaríamos para a API o módulo específico alterado
+    // Por simplicidade no protótipo, salvamos o lote no LocalStorage também
     localStorage.setItem('valtec_db_modules', JSON.stringify(newModules));
   };
 
-  const handleUpdateUserStatus = (userId: string, status: UserStatus) => {
+  const handleUpdateUserStatus = async (userId: string, status: UserStatus) => {
+    await ValtecAPI.updateStatus(userId, status);
     const updatedUsers = allUsers.map(u => u.id === userId ? { ...u, status } : u);
     setAllUsers(updatedUsers);
-    localStorage.setItem('valtec_db_users', JSON.stringify(updatedUsers));
   };
 
   const handleUpdateUser = (updates: Partial<UserProfile>) => {
@@ -111,6 +91,18 @@ const App: React.FC = () => {
   };
 
   const navigate = (screen: Screen) => setCurrentScreen(screen);
+
+  if (isSyncing) {
+    return (
+      <div className="h-screen w-full bg-slate-950 flex flex-col items-center justify-center space-y-4">
+        <div className="relative">
+          <Hammer size={40} className="text-blue-500 animate-bounce" />
+          <div className="absolute -inset-4 bg-blue-500/20 blur-xl rounded-full"></div>
+        </div>
+        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] animate-pulse">Sincronizando Valtec Cloud...</p>
+      </div>
+    );
+  }
 
   const renderScreen = () => {
     if (!currentUser && !['WELCOME', 'LOGIN', 'FORGOT_PASSWORD'].includes(currentScreen)) {
