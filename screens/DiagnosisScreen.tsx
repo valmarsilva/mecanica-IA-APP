@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Screen, Vehicle, UserProfile } from '../types';
-import { analyzePartImage, generateSpeech, decodeAudioData, decodeOBD2Response } from '../geminiService';
-import { Bluetooth, RefreshCcw, AlertCircle, ChevronRight, Camera, Loader2, X, Sparkles, Signal, Database, Terminal, Volume2, ShieldAlert, Activity, Gauge, Thermometer, Zap, Power, BluetoothOff, Trash2, Cpu, RotateCcw } from 'lucide-react';
+import { analyzePartImage, generateSpeech, decodeAudioData, decodeOBD2Response, getMechanicalExplanation } from '../geminiService';
+import { Bluetooth, RefreshCcw, AlertCircle, ChevronRight, Camera, Loader2, X, Sparkles, Signal, Database, Terminal, Volume2, ShieldAlert, Activity, Gauge, Thermometer, Zap, Power, BluetoothOff, Trash2, Cpu, RotateCcw, Search, VolumeX } from 'lucide-react';
 
 interface DiagnosisScreenProps {
   user: UserProfile;
@@ -37,6 +37,11 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
   const [engineOn, setEngineOn] = useState(false);
   const [pids, setPids] = useState({ rpm: 0, temp: 0, volt: 12.4 });
   const [isSpeaking, setIsSpeaking] = useState(false);
+  
+  // Estados para DTC
+  const [isScanningDTC, setIsScanningDTC] = useState(false);
+  const [detectedCode, setDetectedCode] = useState<string | null>(null);
+  const [codeExplanation, setCodeExplanation] = useState<string>('');
 
   const audioContextRef = useRef<AudioContext | null>(null);
 
@@ -101,7 +106,29 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
     setEngineOn(false);
     setPids({ rpm: 0, temp: 0, volt: 12.4 });
     setLogs([]);
+    setDetectedCode(null);
+    setCodeExplanation('');
     handleSpeak("Sessão finalizada. Iniciando novo ciclo de diagnóstico.");
+  };
+
+  const scanDTC = async () => {
+    setIsScanningDTC(true);
+    addLog("03", "WAITING DATA...");
+    await new Promise(r => setTimeout(r, 2500));
+    
+    // Simula detecção de falha
+    const code = "P0301";
+    setDetectedCode(code);
+    addLog("03", "43 01 03 01 00 00");
+    setIsScanningDTC(false);
+    
+    // Busca explicação via IA
+    const explanationData = await getMechanicalExplanation(code);
+    const shortDesc = explanationData.explanation.split('.')[0] + '.';
+    setCodeExplanation(shortDesc);
+
+    // Resposta por voz automática ao detectar
+    handleSpeak(`Código de falha detectado: ${code}. ${shortDesc}`);
   };
 
   useEffect(() => {
@@ -128,20 +155,30 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
   const handleSpeak = async (text: string) => {
     if (isSpeaking) return;
     setIsSpeaking(true);
-    if (!audioContextRef.current) {
-      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
-      audioContextRef.current = new AudioCtx({ sampleRate: 24000 });
-    }
-    const audioBytes = await generateSpeech(text);
-    if (audioBytes && audioContextRef.current) {
-      const buffer = await decodeAudioData(audioBytes, audioContextRef.current, 24000, 1);
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = buffer;
-      source.connect(audioContextRef.current.destination);
-      source.onended = () => setIsSpeaking(false);
-      source.start();
-    } else {
+    try {
+      if (!audioContextRef.current) {
+        const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+        audioContextRef.current = new AudioCtx({ sampleRate: 24000 });
+      }
+      const audioBytes = await generateSpeech(text);
+      if (audioBytes && audioContextRef.current) {
+        const buffer = await decodeAudioData(audioBytes, audioContextRef.current, 24000, 1);
+        const source = audioContextRef.current.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContextRef.current.destination);
+        source.onended = () => setIsSpeaking(false);
+        source.start();
+      } else {
+        setIsSpeaking(false);
+      }
+    } catch (e) {
       setIsSpeaking(false);
+    }
+  };
+
+  const handleExplainCurrentCode = () => {
+    if (detectedCode && codeExplanation) {
+      handleSpeak(`Explicação para o código ${detectedCode}: ${codeExplanation}`);
     }
   };
 
@@ -260,17 +297,74 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
             )}
 
             {mode === 'DTC' && (
-              <div className="flex flex-col items-center justify-center py-10 text-center space-y-6">
-                <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/20">
-                  <ShieldAlert size={40} className="text-emerald-500" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold uppercase text-sm">Memória da ECU Limpa</h3>
-                  <p className="text-slate-500 text-[10px] mt-2 uppercase tracking-widest leading-relaxed">Nenhum código de falha (DTC) detectado no barramento principal.</p>
-                </div>
-                <button onClick={() => { addLog("04", "OK"); handleSpeak("Limpando memória de erros."); }} className="w-full py-4 bg-slate-800 text-red-500 font-black rounded-xl text-[10px] uppercase border border-red-500/20 flex items-center justify-center gap-2">
-                   <Trash2 size={16} /> Forçar Reset de Falhas
-                </button>
+              <div className="space-y-6">
+                {!detectedCode ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center space-y-6">
+                    <div className={`w-24 h-24 rounded-full flex items-center justify-center border transition-all ${isScanningDTC ? 'bg-blue-500/10 border-blue-500/30' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
+                      {isScanningDTC ? <Search size={40} className="text-blue-500 animate-pulse" /> : <ShieldAlert size={40} className="text-emerald-500" />}
+                    </div>
+                    <div>
+                      <h3 className="text-white font-bold uppercase text-sm">
+                        {isScanningDTC ? 'Varrendo Barramento...' : 'Análise de Falhas'}
+                      </h3>
+                      <p className="text-slate-500 text-[10px] mt-2 uppercase tracking-widest leading-relaxed">
+                        {isScanningDTC ? 'Aguardando resposta dos módulos da ECU' : 'Toque abaixo para buscar códigos de erro ativos'}
+                      </p>
+                    </div>
+                    <button 
+                      onClick={scanDTC} 
+                      disabled={isScanningDTC}
+                      className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl uppercase text-xs tracking-widest active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isScanningDTC ? 'Aguarde...' : 'Iniciar Scan de DTCs'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-4">
+                    <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl relative overflow-hidden">
+                       <div className="relative z-10 flex justify-between items-start">
+                          <div>
+                             <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">Falha Detectada</span>
+                             <h3 className="text-4xl font-oswald font-bold text-white mt-1">{detectedCode}</h3>
+                             <p className="text-xs text-slate-400 mt-2 font-medium leading-relaxed italic pr-4">
+                               "{codeExplanation || "Processando análise..."}"
+                             </p>
+                          </div>
+                          <div className="bg-red-600 p-3 rounded-2xl shadow-lg shadow-red-600/20 text-white">
+                             <AlertCircle size={24} />
+                          </div>
+                       </div>
+                       <ShieldAlert size={120} className="absolute -right-8 -bottom-8 text-red-500 opacity-5" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                       <button 
+                         onClick={handleExplainCurrentCode}
+                         disabled={isSpeaking}
+                         className={`flex flex-col items-center justify-center p-6 rounded-3xl border transition-all ${isSpeaking ? 'bg-blue-600 border-blue-500 text-white animate-pulse' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
+                       >
+                         {isSpeaking ? <Volume2 size={32} /> : <Volume2 size={32} />}
+                         <span className="text-[9px] font-black uppercase mt-3 tracking-widest">Ouvir IA Voice</span>
+                       </button>
+                       <button 
+                         onClick={() => onSelectCode(detectedCode)}
+                         className="flex flex-col items-center justify-center p-6 bg-slate-800 border border-slate-700 rounded-3xl text-slate-400"
+                       >
+                         <Terminal size={32} />
+                         <span className="text-[9px] font-black uppercase mt-3 tracking-widest">Ver Detalhes</span>
+                       </button>
+                    </div>
+
+                    <div className="bg-slate-800/80 p-5 rounded-3xl border border-slate-700 mt-4">
+                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Ações Recomendadas</h4>
+                       <div className="space-y-3">
+                          <button onClick={() => { addLog("04", "CLEARED"); setDetectedCode(null); handleSpeak("Memória de erros limpa com sucesso."); }} className="w-full py-4 bg-slate-900 text-slate-400 font-bold rounded-xl text-[10px] uppercase border border-slate-700 flex items-center justify-center gap-2">
+                             <Trash2 size={16} /> Limpar Erros (Reset)
+                          </button>
+                       </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
