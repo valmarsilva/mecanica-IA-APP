@@ -4,10 +4,10 @@
  * Este serviço gerencia a persistência entre LocalStorage e Cloud.
  */
 
-// Usamos HTTPS para evitar bloqueios de conteúdo misto em deploy
+// URL fictícia - em produção real, aponte para seu endpoint Hostinger/Vercel
 const BASE_URL = 'https://api.valtec.ia/v1'; 
 
-const fetchWithTimeout = async (url: string, options: any = {}, timeout = 3000) => {
+const fetchWithTimeout = async (url: string, options: any = {}, timeout = 2000) => {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
@@ -27,7 +27,6 @@ export const ValtecAPI = {
       if (!response.ok) throw new Error();
       return await response.json();
     } catch (e) {
-      // Fallback imediato para LocalStorage se a nuvem falhar
       return JSON.parse(localStorage.getItem('valtec_db_modules') || '[]');
     }
   },
@@ -75,7 +74,7 @@ export const ValtecAPI = {
           name: 'Administrador Valtec',
           role: 'admin' as const,
           status: 'approved' as const,
-          level: 'Master Tech AI',
+          level: 'Master Tech IA',
           xp: 9999,
           premium: true,
           garage: []
