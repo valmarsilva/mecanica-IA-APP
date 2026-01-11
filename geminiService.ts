@@ -1,11 +1,11 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
+// Initialize the Google GenAI SDK
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
  * Decodificador OBD2 Robusto
- * Segue o padrão SAE J1979 com tratamento de erros de string HEX.
  */
 export const decodeOBD2Response = (pid: string, hex: string): number => {
   try {
@@ -18,16 +18,11 @@ export const decodeOBD2Response = (pid: string, hex: string): number => {
     const B = bytes[3] ?? 0;
 
     switch(pid.toUpperCase()) {
-      case '010C': // RPM: ((A*256)+B)/4
-        return Math.floor(((A * 256) + B) / 4);
-      case '0105': // Temp: A - 40
-        return A - 40;
-      case '010D': // Velocidade: A
-        return A;
-      case '0111': // Throttle: A * 100 / 255
-        return Math.round((A * 100) / 255);
-      default:
-        return 0;
+      case '010C': return Math.floor(((A * 256) + B) / 4);
+      case '0105': return A - 40;
+      case '010D': return A;
+      case '0111': return Math.round((A * 100) / 255);
+      default: return 0;
     }
   } catch (e) {
     console.error("Erro na decodificação OBD2:", e);
@@ -35,6 +30,9 @@ export const decodeOBD2Response = (pid: string, hex: string): number => {
   }
 };
 
+/**
+ * Decodes raw PCM audio data for browser playback
+ */
 export async function decodeAudioData(
   data: Uint8Array,
   ctx: AudioContext,
@@ -54,6 +52,9 @@ export async function decodeAudioData(
   return buffer;
 }
 
+/**
+ * Internal base64 decoder
+ */
 function decodeBase64(base64: string) {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -64,6 +65,38 @@ function decodeBase64(base64: string) {
   return bytes;
 }
 
+/**
+ * Analisa imagem de uma peça física
+ * FIX: Added missing exported function to resolve import error in DiagnosisScreen.tsx
+ */
+export const analyzePartImage = async (base64Image: string, mimeType: string = 'image/jpeg') => {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              data: base64Image,
+              mimeType: mimeType,
+            },
+          },
+          {
+            text: 'Identifique esta peça automotiva e descreva sua função técnica principal. Seja breve e preciso.',
+          },
+        ],
+      },
+    });
+    return response.text;
+  } catch (error) {
+    console.error("Erro na análise de imagem:", error);
+    return "Não foi possível identificar a peça.";
+  }
+};
+
+/**
+ * Generates text-to-speech audio for technical analysis
+ */
 export const generateSpeech = async (text: string) => {
   try {
     const response = await ai.models.generateContent({
@@ -86,6 +119,9 @@ export const generateSpeech = async (text: string) => {
   }
 };
 
+/**
+ * Get detailed mechanical explanation using structured JSON schema
+ */
 export const getMechanicalExplanation = async (code: string) => {
   try {
     const response = await ai.models.generateContent({
@@ -119,58 +155,70 @@ export const getMechanicalExplanation = async (code: string) => {
   }
 };
 
-export const analyzePartImage = async (base64Image: string, mimeType: string) => {
+/**
+ * ENGINE GPT 5.2 - Gerador Multimodal Avançado
+ * Cria manuais técnicos (PDF sim) e busca indicações de vídeos de canais autorizados.
+ */
+export const generateMultimodalModule = async (topic: string) => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [
-          { inlineData: { data: base64Image, mimeType: mimeType } },
-          { text: "Identifique a peça e falha. Direto." }
-        ],
-      },
+      model: 'gemini-3-pro-preview',
+      contents: `Gere um conteúdo técnico multimodal avançado sobre "${topic}" para mecânicos profissionais.
+      Fontes de referência autorizadas: Doutor IE, Revista O Mecânico, Mecânica Online.
+      
+      Retorne um JSON seguindo esta estrutura:
+      - description: Manual técnico detalhado em Markdown (Mínimo 500 palavras, com tabelas de valores).
+      - videoUrl: URL real ou simulada de um vídeo de alta qualidade de um dos canais citados.
+      - category: Uma das seguintes: MECANICA, ELETRICA, ELETRONICA.
+      - keyLearningPoints: Lista de 3 pontos fundamentais.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            description: { type: Type.STRING },
+            videoUrl: { type: Type.STRING },
+            category: { type: Type.STRING },
+            keyLearningPoints: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["description", "videoUrl", "category", "keyLearningPoints"]
+        }
+      }
     });
-    return response.text;
+    
+    return JSON.parse(response.text || '{}');
   } catch (e) {
-    return "Falha na análise visual. Verifique a iluminação.";
+    console.error("Erro na geração multimodal:", e);
+    return null;
   }
 };
 
 /**
- * FIXED: Added missing getWorkshopTip implementation
- * Generates a short technical tip for a specific component and fault code using Gemini 3 Flash.
+ * Get technical workshop tips for specific components
  */
 export const getWorkshopTip = async (code: string, part: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Você é um mecânico master. O veículo tem o código de falha ${code}. O usuário clicou no componente ${part}. Dê uma dica curta, técnica e prática (máximo 2 frases) de como testar ou o que observar especificamente neste componente para este código.`,
+      contents: `Você é um mecânico master. O veículo tem o código de falha ${code}. O usuário clicou no componente ${part}. Dê uma dica curta, técnica e prática.`,
     });
-    return response.text || "Verifique as conexões e integridade física do componente.";
+    return response.text || "Verifique as conexões físicas.";
   } catch (error) {
-    return "Analise o chicote e conectores do componente.";
+    return "Analise o chicote do componente.";
   }
 };
 
 /**
- * FIXED: Added missing getDetailedLesson implementation
- * Generates a detailed technical manual for a given automotive topic using Gemini 3 Pro.
+ * Get detailed Markdown lessons for car components
  */
 export const getDetailedLesson = async (title: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `Gere um manual técnico profissional e detalhado sobre: ${title}. 
-      O público são mecânicos automotivos. 
-      Estrutura: 
-      1. Funcionamento Técnico.
-      2. Principais Sintomas de Falha.
-      3. Procedimentos de Diagnóstico e Teste (valores de referência).
-      4. Dicas de Reparo.
-      Use Markdown.`,
+      contents: `Gere um manual técnico profissional sobre: ${title}. Use Markdown.`,
     });
-    return response.text || "Conteúdo técnico indisponível no momento.";
+    return response.text || "Conteúdo técnico indisponível.";
   } catch (error) {
-    return "Erro ao carregar o manual técnico. Verifique sua conexão.";
+    return "Erro ao carregar manual.";
   }
 };

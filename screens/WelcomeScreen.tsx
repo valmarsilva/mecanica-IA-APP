@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Screen } from '../types';
-import { ChevronRight, Shield, Zap, Target, Sparkles, Wrench } from 'lucide-react';
+import { ChevronRight, Shield, Zap, Target, Wrench, Smartphone, QrCode, X, Share, MoreVertical, PlusSquare } from 'lucide-react';
 import { BRAND_CONFIG } from '../brandConfig';
 
 interface WelcomeScreenProps {
@@ -10,20 +10,17 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNavigate }) => {
   const [imageError, setImageError] = useState(false);
-  const hasCustomLogo = BRAND_CONFIG.logoImageUrl !== "" && !imageError;
+  const [showInstallModal, setShowInstallModal] = useState(false);
   
-  // Divide o nome para destacar o "Valtec"
-  const nameParts = BRAND_CONFIG.name.split(' ');
-  const mainName = nameParts.slice(0, 2).join(' '); // Oficina IA
-  const brandName = nameParts.slice(2).join(' '); // Valtec
+  const hasCustomLogo = BRAND_CONFIG.logoImageUrl !== "" && !imageError;
+  const appUrl = window.location.href;
 
   return (
     <div className="h-full flex flex-col bg-slate-900 text-slate-100 overflow-hidden relative">
-      {/* Efeito de luz de fundo azulada para combinar com a logo */}
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-600/20 blur-[120px] rounded-full"></div>
       
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-8 relative z-10">
-        {/* CONTAINER DA LOGO - Estilo arredondado suave */}
+        {/* LOGO CONTAINER */}
         <div className="relative group">
           {hasCustomLogo ? (
             <div className="animate-in zoom-in duration-700">
@@ -46,7 +43,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNavigate }) => {
         <div className="space-y-4">
           <div className="space-y-1">
             <h1 className="text-3xl font-oswald font-bold uppercase tracking-tighter leading-none">
-              {mainName} <span className="text-blue-500">{brandName}</span>
+              Oficina <span className="text-blue-500">IA Valtec</span>
             </h1>
             <p className="text-amber-500 text-[10px] font-black uppercase tracking-[0.4em] mt-2">
               {BRAND_CONFIG.tagline}
@@ -67,11 +64,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNavigate }) => {
             </div>
             <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Prática</span>
           </div>
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-11 h-11 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-blue-400 shadow-inner">
-              <Shield size={18} />
-            </div>
-            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Precisão</span>
+          <div className="flex flex-col items-center gap-2 text-blue-500 animate-bounce">
+            <button onClick={() => setShowInstallModal(true)} className="w-11 h-11 rounded-2xl bg-blue-600/10 border border-blue-500 flex items-center justify-center shadow-lg">
+              <Smartphone size={18} />
+            </button>
+            <span className="text-[8px] font-black uppercase tracking-widest text-blue-500">Baixar App</span>
           </div>
           <div className="flex flex-col items-center gap-2">
             <div className="w-11 h-11 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-blue-400 shadow-inner">
@@ -90,6 +87,62 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNavigate }) => {
           INICIAR JORNADA <ChevronRight size={18} />
         </button>
       </div>
+
+      {/* MODAL DE INSTALAÇÃO (DOWNLOAD APP) */}
+      {showInstallModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="bg-slate-900 w-full max-w-sm rounded-[3rem] border border-slate-800 shadow-2xl overflow-hidden relative">
+            <button onClick={() => setShowInstallModal(false)} className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors">
+              <X size={24} />
+            </button>
+            
+            <div className="p-8 space-y-8">
+              <div className="text-center space-y-2">
+                <h3 className="text-2xl font-oswald text-white uppercase">Baixar Oficina IA</h3>
+                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Fixe o ícone na sua tela inicial</p>
+              </div>
+
+              {/* QR CODE DE INSTALAÇÃO */}
+              <div className="flex flex-col items-center space-y-4">
+                <div className="p-4 bg-white rounded-3xl shadow-xl relative group">
+                  <img 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(appUrl)}&bgcolor=ffffff&color=020617`} 
+                    alt="QR Download"
+                    className="w-44 h-44 rounded-xl"
+                  />
+                  <div className="absolute inset-0 border-4 border-blue-600/20 rounded-3xl pointer-events-none"></div>
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500/50 qr-scan-line shadow-[0_0_15px_#3b82f6]"></div>
+                </div>
+                <p className="text-[9px] text-blue-500 font-bold uppercase tracking-widest text-center">Escaneie com a câmera do celular</p>
+              </div>
+
+              <div className="space-y-4 bg-slate-950/50 p-6 rounded-3xl border border-slate-800">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <PlusSquare size={14} className="text-blue-500" /> Como instalar após abrir:
+                </h4>
+                
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-slate-800 p-2 rounded-lg text-slate-400"><Share size={14} /></div>
+                    <p className="text-[10px] text-slate-300 leading-relaxed"><b>iPhone (iOS):</b> Toque no ícone de <b>Compartilhar</b> e selecione <b>"Adicionar à Tela de Início"</b>.</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="bg-slate-800 p-2 rounded-lg text-slate-400"><MoreVertical size={14} /></div>
+                    <p className="text-[10px] text-slate-300 leading-relaxed"><b>Android:</b> Toque nos <b>três pontinhos</b> e selecione <b>"Instalar Aplicativo"</b>.</p>
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setShowInstallModal(false)}
+                className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20"
+              >
+                Entendi, continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

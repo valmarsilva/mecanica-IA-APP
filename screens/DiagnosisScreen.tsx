@@ -32,7 +32,7 @@ const PIDGauge = ({ label, value, unit, icon: Icon, color, active }: { label: st
 
 const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onSelectCode, vehicle }) => {
   const [mode, setMode] = useState<'REALTIME' | 'DTC' | 'TERMINAL'>('REALTIME');
-  const [status, setStatus] = useState<'IDLE' | 'SCANNING_QR' | 'LINKING' | 'AT_INIT' | 'ECU_SYNC' | 'READY' | 'ERROR'>('IDLE');
+  const [status, setStatus] = useState<'IDLE' | 'LINKING' | 'AT_INIT' | 'ECU_SYNC' | 'READY' | 'ERROR'>('IDLE');
   const [logs, setLogs] = useState<{ cmd: string, res: string, time: string }[]>([]);
   const [engineOn, setEngineOn] = useState(false);
   const [pids, setPids] = useState({ rpm: 0, temp: 0, volt: 12.4 });
@@ -152,7 +152,7 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
           <p className="text-[9px] text-blue-500 font-black uppercase tracking-widest">Protocolo: ISO 15765-4 CAN</p>
         </div>
         <div className="flex gap-2 bg-slate-950 p-2 rounded-2xl border border-slate-800">
-          <StatusLed label="LINK" color="bg-blue-500" active={status !== 'IDLE' && status !== 'SCANNING_QR' && status !== 'ERROR'} blinking={status === 'LINKING'} />
+          <StatusLed label="LINK" color="bg-blue-500" active={status !== 'IDLE' && status !== 'ERROR'} blinking={status === 'LINKING'} />
           <StatusLed label="ECU" color="bg-emerald-500" active={status === 'READY'} blinking={status === 'ECU_SYNC'} />
           <StatusLed label="BUS" color="bg-amber-500" active={engineOn} blinking={engineOn} />
         </div>
@@ -167,7 +167,7 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
         </button>
       )}
 
-      {status !== 'IDLE' && status !== 'SCANNING_QR' && (
+      {status !== 'IDLE' && (
         <div className="bg-slate-800/50 p-1.5 rounded-2xl border border-slate-700/50 flex">
           {['REALTIME', 'DTC', 'TERMINAL'].map(m => (
             <button 
@@ -192,38 +192,12 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
               <div className="absolute -inset-4 bg-blue-500/5 blur-3xl -z-10 rounded-full"></div>
             </div>
             <div className="text-center px-8 space-y-3">
-              <h3 className="text-white font-bold uppercase text-sm tracking-tight">Sincronização de Hardware</h3>
-              <p className="text-slate-500 text-[10px] uppercase tracking-widest leading-relaxed">Utilize o QR Code do seu scanner físico ou inicie a busca via Bluetooth LE.</p>
+              <h3 className="text-white font-bold uppercase text-sm tracking-tight">Sincronização OBDII</h3>
+              <p className="text-slate-500 text-[10px] uppercase tracking-widest leading-relaxed">Conecte o adaptador ELM327 ao veículo e pareie via Bluetooth para iniciar.</p>
             </div>
-            <div className="grid grid-cols-1 gap-4 w-full px-4">
-              <button onClick={() => setStatus('SCANNING_QR')} className="w-full py-5 bg-white text-slate-900 font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 uppercase text-[11px] tracking-widest active:scale-95 transition-all">
-                <QrCode size={18} /> Ler QR Code do Scanner
-              </button>
-              <button onClick={startConnection} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 uppercase text-[11px] tracking-widest active:scale-95 transition-all">
-                <Bluetooth size={18} /> Buscar via Bluetooth
-              </button>
-            </div>
-          </div>
-        ) : status === 'SCANNING_QR' ? (
-          <div className="h-full flex flex-col items-center justify-center space-y-8 animate-in slide-in-from-bottom-10 duration-500">
-            <div className="relative w-64 h-64 bg-black rounded-[2.5rem] border-4 border-slate-800 overflow-hidden flex items-center justify-center">
-               <div className="absolute inset-0 bg-slate-900 flex items-center justify-center">
-                  <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=VALTEC-OBD2-PRO-${Math.random()}&bgcolor=0f172a&color=3b82f6`} 
-                    alt="QR PAIRING"
-                    className="w-48 h-48 rounded-xl opacity-80"
-                  />
-                  {/* Linha de scan animada */}
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500/50 shadow-[0_0_15px_#3b82f6] animate-scan-line"></div>
-               </div>
-               <div className="absolute inset-0 border-[40px] border-slate-900/40"></div>
-            </div>
-            <div className="text-center space-y-2">
-              <p className="text-white font-black text-xs uppercase tracking-[0.2em]">Escaneando Scanner...</p>
-              <p className="text-slate-500 text-[9px] uppercase tracking-widest">Aponte para o selo no adaptador ELM327</p>
-            </div>
-            <button onClick={startConnection} className="py-4 px-10 bg-blue-600 text-white font-black rounded-full text-[10px] uppercase tracking-widest shadow-2xl shadow-blue-600/20">Simular Captura</button>
-            <button onClick={() => setStatus('IDLE')} className="text-slate-500 font-black uppercase text-[9px] tracking-widest">Cancelar</button>
+            <button onClick={startConnection} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 uppercase text-[11px] tracking-widest active:scale-95 transition-all">
+              <Bluetooth size={18} /> Iniciar Busca Bluetooth
+            </button>
           </div>
         ) : (
           <div className="space-y-4 h-full flex flex-col animate-in fade-in duration-700">
@@ -305,19 +279,9 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
         )}
       </div>
 
-      {status !== 'IDLE' && status !== 'SCANNING_QR' && (
+      {status !== 'IDLE' && (
         <button onClick={handleNewDiagnosis} className="w-full py-3 text-slate-600 font-black uppercase text-[9px] tracking-widest mt-auto border-t border-slate-800 pt-4 hover:text-red-400 transition-colors">Encerrar Sessão OBD2</button>
       )}
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes scan-line {
-          0% { top: 0; }
-          100% { top: 100%; }
-        }
-        .animate-scan-line {
-          animation: scan-line 2.5s linear infinite;
-        }
-      `}} />
     </div>
   );
 };

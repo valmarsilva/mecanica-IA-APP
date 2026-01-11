@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { Screen, UserProfile, UserStatus, Module, SystemCategory } from '../types';
-import { getDetailedLesson } from '../geminiService';
+import { generateMultimodalModule } from '../geminiService';
 import { ValtecAPI } from '../services/apiService';
 import { 
   ArrowLeft, Users, Check, X, Search, Video, FileText, Plus, Trash2, 
   Edit3, Save, Globe, Database, UserCheck, UserMinus, LayoutDashboard,
-  Cpu, Zap, BookOpen, Loader2, Sparkles, AlertCircle, CloudOff, Cloud
+  Cpu, Zap, BookOpen, Loader2, Sparkles, AlertCircle, CloudOff, Cloud, Wand2
 } from 'lucide-react';
 
 interface AdminScreenProps {
@@ -25,7 +25,6 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onNavigate, allUsers, modules
   const [isOnline, setIsOnline] = useState(false);
 
   useEffect(() => {
-    // Simula verificação de saúde da API na Hostinger
     const checkApi = async () => {
       try {
         const response = await fetch('http://seu-dominio-na-hostinger.com/api/health/');
@@ -46,7 +45,6 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onNavigate, allUsers, modules
       createdAt: editingMod.createdAt || new Date().toISOString(),
     } as Module;
 
-    // Salva na Nuvem/Hostinger
     await ValtecAPI.saveModule(newMod);
 
     const updated = isNew ? [...modules, newMod] : modules.map(m => m.id === newMod.id ? newMod : m);
@@ -61,11 +59,18 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onNavigate, allUsers, modules
     }
   };
 
-  const handleGenerateContent = async () => {
+  const handleGenerateMultimodal = async () => {
     if (!editingMod?.title) return;
     setIsGenerating(true);
-    const content = await getDetailedLesson(editingMod.title);
-    setEditingMod({ ...editingMod, desc: content });
+    const data = await generateMultimodalModule(editingMod.title);
+    if (data) {
+      setEditingMod({ 
+        ...editingMod, 
+        desc: data.description, 
+        videoUrl: data.videoUrl,
+        category: data.category as any
+      });
+    }
     setIsGenerating(false);
   };
 
@@ -84,7 +89,7 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onNavigate, allUsers, modules
           <div>
             <h2 className="text-xl font-oswald text-white uppercase tracking-tight">Comando Valtec</h2>
             <div className="flex items-center gap-2">
-              <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest">Painel Administrativo v3.0</p>
+              <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest">Painel Administrativo v3.1</p>
               <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[7px] font-black uppercase ${isOnline ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-800 text-slate-600'}`}>
                 {isOnline ? <Cloud size={8} /> : <CloudOff size={8} />}
                 {isOnline ? 'Hostinger Online' : 'Modo Offline'}
@@ -165,7 +170,7 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onNavigate, allUsers, modules
             {editingMod ? (
               <div className="bg-slate-900 border-2 border-blue-500/30 p-6 rounded-[2.5rem] space-y-4 animate-in fade-in zoom-in duration-300">
                 <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Injetar Novo Conteúdo</h3>
+                  <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Injetar Conteúdo GPT 5.2</h3>
                   <button onClick={() => setEditingMod(null)} className="p-2 text-slate-500 hover:text-white"><X size={18} /></button>
                 </div>
                 
@@ -187,17 +192,22 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ onNavigate, allUsers, modules
 
                 <div className="relative">
                   <Video className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
-                  <input value={editingMod.videoUrl} onChange={e => setEditingMod({...editingMod, videoUrl: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-xs text-white outline-none" placeholder="YouTube Link" />
+                  <input value={editingMod.videoUrl} onChange={e => setEditingMod({...editingMod, videoUrl: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-xs text-white outline-none" placeholder="YouTube Link (Doutor IE, Revista O Mecânico...)" />
                 </div>
 
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
                     <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Manual Técnico</label>
-                    <button onClick={handleGenerateContent} disabled={isGenerating} className="text-[9px] font-black text-blue-500 bg-blue-500/10 px-2 py-1 rounded-lg">
-                      {isGenerating ? 'Gerando...' : 'Gerar via IA'}
+                    <button 
+                      onClick={handleGenerateMultimodal} 
+                      disabled={isGenerating} 
+                      className="text-[9px] font-black text-white bg-blue-600 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-lg shadow-blue-600/20 hover:bg-blue-500 transition-all"
+                    >
+                      {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
+                      {isGenerating ? 'Alimentando...' : 'GPT 5.2 Multimodal'}
                     </button>
                   </div>
-                  <textarea value={editingMod.desc} onChange={e => setEditingMod({...editingMod, desc: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white min-h-[120px] outline-none" />
+                  <textarea value={editingMod.desc} onChange={e => setEditingMod({...editingMod, desc: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white min-h-[120px] outline-none" placeholder="O GPT 5.2 preencherá isso com o manual técnico completo..." />
                 </div>
 
                 <button onClick={handleSaveModule} className="w-full py-4 bg-blue-600 text-white font-black rounded-xl text-[10px] uppercase shadow-xl shadow-blue-600/30">

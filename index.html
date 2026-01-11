@@ -4,12 +4,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Oficina IA</title>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Oficina IA">
-    <link rel="apple-touch-icon" href="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6946a4c9ab084c9f3c4e7142/fa407d51d_logo-oficinapng.png">
+    <title>Oficina IA Valtec</title>
     
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#020617" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Oficina IA" />
+    
+    <!-- App Icons -->
+    <link rel="apple-touch-icon" href="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6946a4c9ab084c9f3c4e7142/fa407d51d_logo-oficinapng.png" />
+    <link rel="icon" type="image/png" href="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6946a4c9ab084c9f3c4e7142/fa407d51d_logo-oficinapng.png" />
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
     <style>
@@ -22,10 +30,18 @@
       .font-oswald {
         font-family: 'Oswald', sans-serif;
       }
-      /* Otimização para "Safe Area" de celulares com notch */
+      /* Safe area para celulares com notch */
       main {
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);
+      }
+      /* Animação do Scanner QR */
+      @keyframes scan {
+        0% { top: 0%; }
+        100% { top: 100%; }
+      }
+      .qr-scan-line {
+        animation: scan 2s linear infinite;
       }
     </style>
   <script type="importmap">
