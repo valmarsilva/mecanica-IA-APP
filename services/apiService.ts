@@ -1,27 +1,40 @@
 
 /**
  * API Service - Oficina IA Valtec
- * Este arquivo é a "ponte" entre o App e o servidor na Hostinger.
+ * Este serviço gerencia a persistência entre LocalStorage e Cloud.
  */
 
-const BASE_URL = 'http://seu-dominio-na-hostinger.com/api'; 
+// Usamos HTTPS para evitar bloqueios de conteúdo misto em deploy
+const BASE_URL = 'https://api.valtec.ia/v1'; 
+
+const fetchWithTimeout = async (url: string, options: any = {}, timeout = 3000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (e) {
+    clearTimeout(id);
+    throw e;
+  }
+};
 
 export const ValtecAPI = {
-  // GESTÃO DE MÓDULOS (VÍDEOS E PDFS)
   async getModules() {
     try {
-      const response = await fetch(`${BASE_URL}/modules/`);
-      if (!response.ok) throw new Error('Falha ao carregar módulos');
+      const response = await fetchWithTimeout(`${BASE_URL}/modules/`);
+      if (!response.ok) throw new Error();
       return await response.json();
     } catch (e) {
-      console.warn("Usando dados locais: Servidor offline");
+      // Fallback imediato para LocalStorage se a nuvem falhar
       return JSON.parse(localStorage.getItem('valtec_db_modules') || '[]');
     }
   },
 
   async saveModule(moduleData: any) {
     try {
-      const response = await fetch(`${BASE_URL}/modules/`, {
+      const response = await fetchWithTimeout(`${BASE_URL}/modules/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(moduleData)
@@ -39,7 +52,7 @@ export const ValtecAPI = {
 
   async deleteModule(id: string) {
     try {
-      await fetch(`${BASE_URL}/modules/${id}/`, { method: 'DELETE' });
+      await fetchWithTimeout(`${BASE_URL}/modules/${id}/`, { method: 'DELETE' });
     } catch (e) {
       const modules = JSON.parse(localStorage.getItem('valtec_db_modules') || '[]');
       const filtered = modules.filter((m: any) => m.id !== id);
@@ -47,23 +60,21 @@ export const ValtecAPI = {
     }
   },
 
-  // GESTÃO DE USUÁRIOS
   async getUsers() {
     try {
-      const response = await fetch(`${BASE_URL}/users/`);
+      const response = await fetchWithTimeout(`${BASE_URL}/users/`);
       if (!response.ok) throw new Error();
       return await response.json();
     } catch (e) {
       const localUsers = JSON.parse(localStorage.getItem('valtec_db_users') || '[]');
       
-      // SE NÃO EXISTIREM USUÁRIOS, CRIA O ADMIN MESTRE
       if (localUsers.length === 0) {
         const masterAdmin = {
           id: 'master-admin',
           email: 'admin@valtec.ia',
           name: 'Administrador Valtec',
-          role: 'admin',
-          status: 'approved',
+          role: 'admin' as const,
+          status: 'approved' as const,
           level: 'Master Tech AI',
           xp: 9999,
           premium: true,
@@ -72,14 +83,13 @@ export const ValtecAPI = {
         localStorage.setItem('valtec_db_users', JSON.stringify([masterAdmin]));
         return [masterAdmin];
       }
-      
       return localUsers;
     }
   },
 
   async updateStatus(userId: string, status: string) {
     try {
-      await fetch(`${BASE_URL}/users/${userId}/status/`, {
+      await fetchWithTimeout(`${BASE_URL}/users/${userId}/status/`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
@@ -94,7 +104,7 @@ export const ValtecAPI = {
 
 export const sendRecoveryEmail = async (email: string) => {
   try {
-    const response = await fetch('http://localhost:8000/api/recover-password/', {
+    const response = await fetchWithTimeout(`${BASE_URL}/recover-password/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })

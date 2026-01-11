@@ -16,7 +16,7 @@ import CheckoutScreen from './screens/CheckoutScreen';
 import Navigation from './components/Navigation';
 import Sidebar from './components/Sidebar';
 import { ValtecAPI } from './services/apiService';
-import { Menu, Bell, Hammer, Loader2 } from 'lucide-react';
+import { Menu, Bell, Hammer } from 'lucide-react';
 import { Screen, UserProfile, UserStatus, Module } from './types';
 
 const App: React.FC = () => {
@@ -29,27 +29,32 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initApp = async () => {
-      setIsSyncing(true);
-      
-      // 1. Tenta carregar dados da "Nuvem" (API)
-      const cloudModules = await ValtecAPI.getModules();
-      const cloudUsers = await ValtecAPI.getUsers();
-      
-      setModules(cloudModules);
-      setAllUsers(cloudUsers);
+      try {
+        setIsSyncing(true);
+        
+        // Carrega dados (Tenta API, se falhar ou demorar usa LocalStorage imediatamente)
+        const cloudModules = await ValtecAPI.getModules();
+        const cloudUsers = await ValtecAPI.getUsers();
+        
+        setModules(cloudModules || []);
+        setAllUsers(cloudUsers || []);
 
-      // 2. Verifica Sessão
-      const sessionUser = localStorage.getItem('valtec_session');
-      if (sessionUser) {
-        const parsed = JSON.parse(sessionUser);
-        const user = cloudUsers.find((u: UserProfile) => u.id === parsed.id);
-        if (user && user.status === 'approved') {
-          setCurrentUser(user);
-          setCurrentScreen('DASHBOARD');
+        // Verifica Sessão Ativa
+        const sessionData = localStorage.getItem('valtec_session');
+        if (sessionData) {
+          const parsed = JSON.parse(sessionData);
+          const user = (cloudUsers || []).find((u: UserProfile) => u.id === parsed.id);
+          if (user && user.status === 'approved') {
+            setCurrentUser(user);
+            setCurrentScreen('DASHBOARD');
+          }
         }
+      } catch (error) {
+        console.error("Erro crítico na inicialização:", error);
+      } finally {
+        // Garante que o app saia do estado de carregamento independente do resultado
+        setIsSyncing(false);
       }
-      
-      setIsSyncing(false);
     };
 
     initApp();
@@ -57,8 +62,6 @@ const App: React.FC = () => {
 
   const handleUpdateModules = async (newModules: Module[]) => {
     setModules(newModules);
-    // Aqui enviaríamos para a API o módulo específico alterado
-    // Por simplicidade no protótipo, salvamos o lote no LocalStorage também
     localStorage.setItem('valtec_db_modules', JSON.stringify(newModules));
   };
 
@@ -81,25 +84,28 @@ const App: React.FC = () => {
   const handleLogin = (user: UserProfile) => {
     setCurrentUser(user);
     localStorage.setItem('valtec_session', JSON.stringify(user));
-    navigate('DASHBOARD');
+    setCurrentScreen('DASHBOARD');
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('valtec_session');
-    navigate('WELCOME');
+    setCurrentScreen('WELCOME');
   };
 
   const navigate = (screen: Screen) => setCurrentScreen(screen);
 
   if (isSyncing) {
     return (
-      <div className="h-screen w-full bg-slate-950 flex flex-col items-center justify-center space-y-4">
+      <div className="h-screen w-full bg-slate-950 flex flex-col items-center justify-center space-y-6">
         <div className="relative">
-          <Hammer size={40} className="text-blue-500 animate-bounce" />
-          <div className="absolute -inset-4 bg-blue-500/20 blur-xl rounded-full"></div>
+          <Hammer size={48} className="text-blue-500 animate-bounce" />
+          <div className="absolute -inset-6 bg-blue-500/10 blur-2xl rounded-full"></div>
         </div>
-        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] animate-pulse">Sincronizando Valtec Cloud...</p>
+        <div className="text-center">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] animate-pulse">Iniciando Protocolos</p>
+          <p className="text-[8px] text-slate-600 uppercase mt-2">Valtec IA v2.5.1</p>
+        </div>
       </div>
     );
   }
@@ -134,7 +140,7 @@ const App: React.FC = () => {
   const showFrame = !['WELCOME', 'LOGIN', 'FORGOT_PASSWORD', 'ADMIN', 'TESTS'].includes(currentScreen);
 
   return (
-    <div className="flex flex-col h-screen max-w-md mx-auto bg-slate-950 overflow-hidden relative border-x border-slate-900 shadow-2xl font-inter">
+    <div className="flex flex-col h-screen max-w-md mx-auto bg-slate-950 overflow-hidden relative border-x border-slate-900 shadow-2xl">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onNavigate={navigate} user={currentUser} onLogout={handleLogout} />
       
       {showFrame && currentUser && (
