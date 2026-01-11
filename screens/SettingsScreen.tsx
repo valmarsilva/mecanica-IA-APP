@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { Screen, UserProfile, Vehicle } from '../types';
 import { validators } from '../utils/testRunner';
-import { Car, Shield, MessageSquare, LogOut, ChevronRight, CreditCard, Edit3, PlusCircle, Sparkles, Home, Beaker, LayoutDashboard } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { Car, Shield, MessageSquare, LogOut, ChevronRight, CreditCard, Edit3, PlusCircle, Sparkles, Home, Beaker, LayoutDashboard, QrCode, X, Share2 } from 'lucide-react';
 
 interface SettingsScreenProps {
   user: UserProfile;
@@ -15,6 +16,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ user, onNavigate, onUpd
   const [isAddingCar, setIsAddingCar] = useState(user.garage.length === 0);
   const [editingCarId, setEditingCarId] = useState<string | null>(null);
   const [carData, setCarData] = useState<Vehicle>({ id: '', make: '', model: '', year: '', engine: '', fuel: '' });
+  const [showQR, setShowQR] = useState(false);
   
   const SUPPORT_EMAIL = 'jarvixkonan@gmail.com';
 
@@ -41,13 +43,57 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ user, onNavigate, onUpd
   const sections = [
     { title: 'Painel Inicial', desc: 'Voltar ao Dashboard', icon: Home, action: () => onNavigate('DASHBOARD') },
     ...(user.role === 'admin' ? [{ title: 'Admin', desc: 'Gerenciar App', icon: LayoutDashboard, action: () => onNavigate('ADMIN') }] : []),
+    { title: 'Identidade Mecânica', desc: 'Gerar QR Code de Perfil', icon: QrCode, action: () => setShowQR(true) },
     { title: 'Oficina IA Pro', desc: user.premium ? 'Membro Pro Ativo' : 'Assinar Plano Premium', icon: CreditCard, action: () => onNavigate('CHECKOUT') },
     { title: 'Auditoria Técnica', desc: 'Saúde do Sistema', icon: Beaker, action: () => onNavigate('TESTS') },
     { title: 'Suporte', desc: SUPPORT_EMAIL, icon: MessageSquare, action: () => window.location.href = `mailto:${SUPPORT_EMAIL}` },
   ];
 
+  const profileUrl = `valtec-ia://profile/${user.id}`;
+
   return (
     <div className="p-6 space-y-8 pb-24 bg-slate-900 min-h-full">
+      {/* Modal QR Code */}
+      {showQR && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="bg-slate-900 border border-slate-800 p-8 rounded-[3rem] w-full max-w-sm flex flex-col items-center space-y-6 relative shadow-2xl">
+            <button onClick={() => setShowQR(false)} className="absolute top-6 right-6 p-2 bg-slate-800 rounded-full text-slate-400">
+              <X size={20} />
+            </button>
+            <div className="text-center space-y-1">
+              <h3 className="text-xl font-oswald text-white uppercase tracking-tight">QR Connect</h3>
+              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Sua Identidade Valtec IA</p>
+            </div>
+            
+            <div className="bg-white p-6 rounded-3xl shadow-xl shadow-blue-500/10">
+              <QRCodeSVG 
+                value={profileUrl}
+                size={200}
+                level="H"
+                includeMargin={false}
+                imageSettings={{
+                  src: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6946a4c9ab084c9f3c4e7142/fa407d51d_logo-oficinapng.png",
+                  x: undefined,
+                  y: undefined,
+                  height: 40,
+                  width: 40,
+                  excavate: true,
+                }}
+              />
+            </div>
+            
+            <div className="text-center">
+              <p className="text-white font-bold text-sm">{user.name}</p>
+              <p className="text-[10px] text-blue-500 font-black uppercase mt-1">{user.level}</p>
+            </div>
+
+            <button className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest">
+              <Share2 size={16} /> Compartilhar Cartão
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="flex flex-col items-center pt-4">
         <div className="relative">
           <div className="w-24 h-24 bg-blue-600 rounded-full border-4 border-slate-800 overflow-hidden mb-4 shadow-xl">

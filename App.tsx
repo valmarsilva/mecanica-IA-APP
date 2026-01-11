@@ -19,6 +19,42 @@ import { ValtecAPI } from './services/apiService';
 import { Menu, Bell, Hammer } from 'lucide-react';
 import { Screen, UserProfile, UserStatus, Module } from './types';
 
+const MOCK_MODULES: Module[] = [
+  {
+    id: 'm1',
+    title: 'Diagnóstico de Redes CAN-BUS',
+    category: 'ELETRONICA',
+    level: 'Expert',
+    unlocked: true,
+    videoUrl: 'https://www.youtube.com/embed/8X7Wv6_oH3s', // Vídeo público de exemplo
+    desc: 'Análise aprofundada de sinais diferenciais e medição de resistência de terminação. Essencial para falhas de comunicação em módulos modernos.',
+    hasPdf: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'm2',
+    title: 'Gestão Térmica: Arrefecimento Pilotado',
+    category: 'MECANICA',
+    level: 'Técnico',
+    unlocked: true,
+    videoUrl: 'https://www.youtube.com/embed/m6lQ3eJ5X8c',
+    desc: 'Como testar válvulas termostáticas eletrônicas e bombas d\'água variáveis. Valores de duty-cycle e procedimentos de sangria via scanner.',
+    hasPdf: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'm3',
+    title: 'Injeção Direta GDI: Teste de Alta Pressão',
+    category: 'MECANICA',
+    level: 'Avançado',
+    unlocked: true,
+    videoUrl: 'https://www.youtube.com/embed/5DREgD8pP4M',
+    desc: 'Diagnóstico de bombas de alta pressão e injetores piezoinjetados. Segurança no manuseio e análise de gráfico de pressão (Rail).',
+    hasPdf: true,
+    createdAt: new Date().toISOString()
+  }
+];
+
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('WELCOME');
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -29,7 +65,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initApp = async () => {
-      // Timeout de segurança: Se em 3 segundos a API não responder, libera o app para o estado local
       const safetyTimeout = setTimeout(() => {
         if (isSyncing) {
           console.warn("Sincronização excedeu o tempo limite. Liberando interface...");
@@ -38,7 +73,12 @@ const App: React.FC = () => {
       }, 3000);
 
       try {
-        const cloudModules = await ValtecAPI.getModules();
+        let cloudModules = await ValtecAPI.getModules();
+        if (!cloudModules || cloudModules.length === 0) {
+          cloudModules = MOCK_MODULES;
+          localStorage.setItem('valtec_db_modules', JSON.stringify(MOCK_MODULES));
+        }
+        
         const cloudUsers = await ValtecAPI.getUsers();
         
         setModules(cloudModules || []);
@@ -147,7 +187,7 @@ const App: React.FC = () => {
   const showFrame = !['WELCOME', 'LOGIN', 'FORGOT_PASSWORD', 'ADMIN', 'TESTS'].includes(currentScreen);
 
   return (
-    <div className="flex flex-col w-full max-w-2xl bg-slate-950 relative border-x border-slate-900 shadow-2xl overflow-hidden" style={{ height: 'var(--app-height)' }}>
+    <div className="flex flex-col w-full max-w-2xl bg-slate-950 relative border-x border-slate-900 shadow-2xl overflow-hidden no-print" style={{ height: 'var(--app-height)' }}>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onNavigate={navigate} user={currentUser} onLogout={handleLogout} />
       
       {showFrame && currentUser && (
