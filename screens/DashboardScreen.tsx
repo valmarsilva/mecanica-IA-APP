@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Screen, UserProfile } from '../types';
-import { Scan, Hammer, GraduationCap, Trophy, ChevronRight, Zap, Target, Star, Wrench, ShieldCheck } from 'lucide-react';
+import { Scan, Hammer, GraduationCap, Trophy, ChevronRight, Zap, Target, Star, Wrench, ShieldCheck, Bluetooth, QrCode } from 'lucide-react';
 
 interface DashboardScreenProps {
   user: UserProfile;
@@ -10,14 +10,14 @@ interface DashboardScreenProps {
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNavigate }) => {
   const menuItems = [
-    { id: 'DIAGNOSIS' as Screen, label: 'Scanner OBD2', icon: Scan, color: 'bg-blue-600', desc: 'Diagnóstico via IA' },
+    { id: 'DIAGNOSIS' as Screen, label: 'Scanner OBD2', icon: Scan, color: 'bg-blue-600', desc: 'Diagnóstico & QR Link' },
     { id: 'WORKSHOP' as Screen, label: 'Oficina Virtual', icon: Hammer, color: 'bg-indigo-600', desc: 'Treinamento Prático' },
     { id: 'LEARNING' as Screen, label: 'Academia Técnica', icon: GraduationCap, color: 'bg-emerald-600', desc: 'Módulos Especializados' },
     { id: 'ACHIEVEMENTS' as Screen, label: 'Conquistas', icon: Trophy, color: 'bg-slate-700', desc: 'Status: ' + user.level },
   ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 bg-slate-900 min-h-full pb-8 font-inter">
+    <div className="p-6 space-y-6 bg-slate-900 min-h-full pb-24 font-inter">
       <header className="flex justify-between items-center">
         <div>
           <p className="text-blue-500 text-[10px] font-black uppercase tracking-widest">Valtec Connect v2.5</p>
@@ -39,8 +39,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNavigate }) =
               <ShieldCheck size={16} className="text-blue-400" />
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{user.level}</span>
             </div>
-            <div className="px-2 py-1 bg-blue-500/10 rounded-lg border border-blue-500/20">
-               <span className="text-[10px] font-black text-blue-400 uppercase tracking-tighter">Premium Account</span>
+            <div className="flex items-center gap-2 px-2 py-1 bg-blue-500/10 rounded-lg border border-blue-500/20">
+               <Bluetooth size={10} className="text-blue-400" />
+               <span className="text-[10px] font-black text-blue-400 uppercase tracking-tighter">BT Ready</span>
             </div>
           </div>
           
@@ -60,8 +61,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNavigate }) =
         <Wrench size={120} className="absolute -right-8 -bottom-8 text-white/[0.03] -rotate-12 group-hover:rotate-0 transition-transform duration-700" />
       </div>
 
-      {/* Menu Grid - Adaptativo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Menu Grid */}
+      <div className="grid grid-cols-1 gap-4">
         {menuItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -74,7 +75,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNavigate }) =
                 <Icon size={24} />
               </div>
               <div className="flex-1 text-left">
-                <h4 className="font-bold text-white text-base leading-none">{item.label}</h4>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-white text-base leading-none">{item.label}</h4>
+                  {item.id === 'DIAGNOSIS' && <QrCode size={12} className="text-blue-400" />}
+                </div>
                 <p className="text-xs text-slate-500 mt-1">{item.desc}</p>
               </div>
               <ChevronRight size={20} className="text-slate-600 group-hover:text-blue-400 transition-all" />
@@ -87,7 +91,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNavigate }) =
       <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl flex items-start gap-3 shadow-inner">
         <Zap size={20} className="text-amber-500 shrink-0 mt-0.5" />
         <p className="text-xs text-slate-400 leading-relaxed italic">
-          <span className="text-amber-500 font-bold not-italic">Dica:</span> Cheque o chicote elétrico antes de trocar o sensor em casos de falha intermitente.
+          <span className="text-amber-500 font-bold not-italic">Dica:</span> Ao usar o Scanner, certifique-se que o QR Code do adaptador está limpo para leitura imediata.
         </p>
       </div>
     </div>

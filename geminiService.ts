@@ -1,16 +1,7 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
-// Proteção contra erro de referência se process não estiver definido no navegador
-const getApiKey = () => {
-  try {
-    return process.env.API_KEY || "";
-  } catch (e) {
-    return "";
-  }
-};
-
-const ai = new GoogleGenAI({ apiKey: getApiKey() });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
  * Decodificador OBD2 Robusto
@@ -145,6 +136,10 @@ export const analyzePartImage = async (base64Image: string, mimeType: string) =>
   }
 };
 
+/**
+ * FIXED: Added missing getWorkshopTip implementation
+ * Generates a short technical tip for a specific component and fault code using Gemini 3 Flash.
+ */
 export const getWorkshopTip = async (code: string, part: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({
@@ -157,6 +152,10 @@ export const getWorkshopTip = async (code: string, part: string): Promise<string
   }
 };
 
+/**
+ * FIXED: Added missing getDetailedLesson implementation
+ * Generates a detailed technical manual for a given automotive topic using Gemini 3 Pro.
+ */
 export const getDetailedLesson = async (title: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({

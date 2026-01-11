@@ -16,44 +16,8 @@ import CheckoutScreen from './screens/CheckoutScreen';
 import Navigation from './components/Navigation';
 import Sidebar from './components/Sidebar';
 import { ValtecAPI } from './services/apiService';
-import { Menu, Bell, Hammer } from 'lucide-react';
+import { Menu, Bell, Hammer, Loader2 } from 'lucide-react';
 import { Screen, UserProfile, UserStatus, Module } from './types';
-
-const MOCK_MODULES: Module[] = [
-  {
-    id: 'm1',
-    title: 'Diagnóstico de Redes CAN-BUS',
-    category: 'ELETRONICA',
-    level: 'Expert',
-    unlocked: true,
-    videoUrl: 'https://www.youtube.com/embed/8X7Wv6_oH3s', // Vídeo público de exemplo
-    desc: 'Análise aprofundada de sinais diferenciais e medição de resistência de terminação. Essencial para falhas de comunicação em módulos modernos.',
-    hasPdf: true,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'm2',
-    title: 'Gestão Térmica: Arrefecimento Pilotado',
-    category: 'MECANICA',
-    level: 'Técnico',
-    unlocked: true,
-    videoUrl: 'https://www.youtube.com/embed/m6lQ3eJ5X8c',
-    desc: 'Como testar válvulas termostáticas eletrônicas e bombas d\'água variáveis. Valores de duty-cycle e procedimentos de sangria via scanner.',
-    hasPdf: true,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'm3',
-    title: 'Injeção Direta GDI: Teste de Alta Pressão',
-    category: 'MECANICA',
-    level: 'Avançado',
-    unlocked: true,
-    videoUrl: 'https://www.youtube.com/embed/5DREgD8pP4M',
-    desc: 'Diagnóstico de bombas de alta pressão e injetores piezoinjetados. Segurança no manuseio e análise de gráfico de pressão (Rail).',
-    hasPdf: true,
-    createdAt: new Date().toISOString()
-  }
-];
 
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('WELCOME');
@@ -65,40 +29,27 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initApp = async () => {
-      const safetyTimeout = setTimeout(() => {
-        if (isSyncing) {
-          console.warn("Sincronização excedeu o tempo limite. Liberando interface...");
-          setIsSyncing(false);
-        }
-      }, 3000);
+      setIsSyncing(true);
+      
+      // 1. Tenta carregar dados da "Nuvem" (API)
+      const cloudModules = await ValtecAPI.getModules();
+      const cloudUsers = await ValtecAPI.getUsers();
+      
+      setModules(cloudModules);
+      setAllUsers(cloudUsers);
 
-      try {
-        let cloudModules = await ValtecAPI.getModules();
-        if (!cloudModules || cloudModules.length === 0) {
-          cloudModules = MOCK_MODULES;
-          localStorage.setItem('valtec_db_modules', JSON.stringify(MOCK_MODULES));
+      // 2. Verifica Sessão
+      const sessionUser = localStorage.getItem('valtec_session');
+      if (sessionUser) {
+        const parsed = JSON.parse(sessionUser);
+        const user = cloudUsers.find((u: UserProfile) => u.id === parsed.id);
+        if (user && user.status === 'approved') {
+          setCurrentUser(user);
+          setCurrentScreen('DASHBOARD');
         }
-        
-        const cloudUsers = await ValtecAPI.getUsers();
-        
-        setModules(cloudModules || []);
-        setAllUsers(cloudUsers || []);
-
-        const sessionData = localStorage.getItem('valtec_session');
-        if (sessionData) {
-          const parsed = JSON.parse(sessionData);
-          const user = (cloudUsers || []).find((u: UserProfile) => u.id === parsed.id);
-          if (user && user.status === 'approved') {
-            setCurrentUser(user);
-            setCurrentScreen('DASHBOARD');
-          }
-        }
-      } catch (error) {
-        console.error("Erro crítico na inicialização:", error);
-      } finally {
-        clearTimeout(safetyTimeout);
-        setIsSyncing(false);
       }
+      
+      setIsSyncing(false);
     };
 
     initApp();
@@ -106,6 +57,8 @@ const App: React.FC = () => {
 
   const handleUpdateModules = async (newModules: Module[]) => {
     setModules(newModules);
+    // Aqui enviaríamos para a API o módulo específico alterado
+    // Por simplicidade no protótipo, salvamos o lote no LocalStorage também
     localStorage.setItem('valtec_db_modules', JSON.stringify(newModules));
   };
 
@@ -128,31 +81,25 @@ const App: React.FC = () => {
   const handleLogin = (user: UserProfile) => {
     setCurrentUser(user);
     localStorage.setItem('valtec_session', JSON.stringify(user));
-    setCurrentScreen('DASHBOARD');
+    navigate('DASHBOARD');
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('valtec_session');
-    setCurrentScreen('WELCOME');
+    navigate('WELCOME');
   };
 
-  const navigate = (screen: Screen) => {
-    setCurrentScreen(screen);
-    setIsSidebarOpen(false);
-  };
+  const navigate = (screen: Screen) => setCurrentScreen(screen);
 
   if (isSyncing) {
     return (
-      <div className="w-full bg-slate-950 flex flex-col items-center justify-center space-y-6" style={{ height: 'var(--app-height)' }}>
+      <div className="h-screen w-full bg-slate-950 flex flex-col items-center justify-center space-y-4">
         <div className="relative">
-          <Hammer size={48} className="text-blue-500 animate-bounce" />
-          <div className="absolute -inset-6 bg-blue-500/10 blur-2xl rounded-full"></div>
+          <Hammer size={40} className="text-blue-500 animate-bounce" />
+          <div className="absolute -inset-4 bg-blue-500/20 blur-xl rounded-full"></div>
         </div>
-        <div className="text-center">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] animate-pulse">Iniciando Protocolos</p>
-          <p className="text-[8px] text-slate-600 uppercase mt-2">Valtec IA v2.5.1</p>
-        </div>
+        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] animate-pulse">Sincronizando Valtec Cloud...</p>
       </div>
     );
   }
@@ -171,7 +118,7 @@ const App: React.FC = () => {
       }} />;
       case 'FORGOT_PASSWORD': return <ForgotPasswordScreen onNavigate={navigate} allUsers={allUsers} />;
       case 'DASHBOARD': return <DashboardScreen user={currentUser!} onNavigate={navigate} />;
-      case 'DIAGNOSIS': return <DiagnosisScreen user={currentUser!} onNavigate={navigate} onSelectCode={(code) => navigate('EXPLANATION')} />;
+      case 'DIAGNOSIS': return <DiagnosisScreen user={currentUser!} onNavigate={navigate} onSelectCode={() => navigate('EXPLANATION')} />;
       case 'EXPLANATION': return <ExplanationScreen code="P0301" onNavigate={navigate} />;
       case 'WORKSHOP': return <WorkshopScreen onNavigate={navigate} onComplete={() => navigate('DASHBOARD')} />;
       case 'LEARNING': return <LearningScreen onNavigate={navigate} modules={modules} />;
@@ -187,7 +134,7 @@ const App: React.FC = () => {
   const showFrame = !['WELCOME', 'LOGIN', 'FORGOT_PASSWORD', 'ADMIN', 'TESTS'].includes(currentScreen);
 
   return (
-    <div className="flex flex-col w-full max-w-2xl bg-slate-950 relative border-x border-slate-900 shadow-2xl overflow-hidden no-print" style={{ height: 'var(--app-height)' }}>
+    <div className="flex flex-col h-screen max-w-md mx-auto bg-slate-950 overflow-hidden relative border-x border-slate-900 shadow-2xl font-inter">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onNavigate={navigate} user={currentUser} onLogout={handleLogout} />
       
       {showFrame && currentUser && (
@@ -203,7 +150,7 @@ const App: React.FC = () => {
         </header>
       )}
 
-      <main className="flex-1 overflow-y-auto w-full relative">
+      <main className={`flex-1 overflow-y-auto ${showFrame ? 'pb-16' : ''}`}>
         {renderScreen()}
       </main>
 
