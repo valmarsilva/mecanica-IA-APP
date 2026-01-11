@@ -4,9 +4,6 @@ import { Screen, Vehicle, UserProfile } from '../types';
 import { analyzePartImage, generateSpeech, decodeAudioData, decodeOBD2Response } from '../geminiService';
 import { Bluetooth, RefreshCcw, AlertCircle, ChevronRight, Camera, Loader2, X, Sparkles, Signal, Database, Terminal, Volume2, ShieldAlert, Activity, Gauge, Thermometer, Zap, Power, BluetoothOff, Trash2, Cpu, RotateCcw } from 'lucide-react';
 
-/**
- * FIXED: Missing DiagnosisScreenProps interface definition
- */
 interface DiagnosisScreenProps {
   user: UserProfile;
   onNavigate: (screen: Screen) => void;
@@ -48,9 +45,6 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
     setLogs(prev => [{ cmd, res, time }, ...prev].slice(0, 10));
   };
 
-  /**
-   * Sintetiza um som sutil de conexão Bluetooth (Bip-Bip ascendente)
-   */
   const playConnectSound = () => {
     try {
       const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
@@ -75,16 +69,15 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
       };
 
       const now = ctx.currentTime;
-      playTone(523.25, now, 0.1); // Nota Dó (C5)
-      playTone(659.25, now + 0.1, 0.15); // Nota Mi (E5)
+      playTone(523.25, now, 0.1);
+      playTone(659.25, now + 0.1, 0.15);
     } catch (e) {
       console.warn("Audio synthesis unavailable");
     }
   };
 
-  // Ciclo de Vida da Conexão Realística
   const startConnection = async () => {
-    playConnectSound(); // Feedback auditivo imediato
+    playConnectSound();
     setStatus('LINKING');
     addLog("BT_SEARCH", "BUSCANDO OBDII...");
     
@@ -96,7 +89,7 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
     
     await new Promise(r => setTimeout(r, 1500));
     setStatus('ECU_SYNC');
-    addLog("01 00", "41 00 BE 1F B8 10"); // Supported PIDs query
+    addLog("01 00", "41 00 BE 1F B8 10");
     
     await new Promise(r => setTimeout(r, 1000));
     setStatus('READY');
@@ -111,13 +104,11 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
     handleSpeak("Sessão finalizada. Iniciando novo ciclo de diagnóstico.");
   };
 
-  // Simulador de Leitura de PIDs Hex (Request/Response)
   useEffect(() => {
     let interval: any;
     if (status === 'READY') {
       interval = setInterval(() => {
         if (engineOn) {
-          // Simula resposta HEX do RPM (PID 01 0C)
           const rpmHexA = (10 + Math.floor(Math.random() * 5)).toString(16).toUpperCase();
           const rpmHexB = Math.floor(Math.random() * 255).toString(16).toUpperCase();
           const res = `41 0C ${rpmHexA} ${rpmHexB}`;
@@ -155,7 +146,7 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
   };
 
   return (
-    <div className="p-6 flex flex-col h-full space-y-5 bg-slate-900 pb-24 overflow-hidden">
+    <div className="p-6 flex flex-col min-h-full space-y-5 bg-slate-900 pb-24">
       <header className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-oswald text-white uppercase tracking-tight">OBDII Real-Link</h2>
@@ -177,7 +168,7 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
         </button>
       )}
 
-      <div className="bg-slate-800/50 p-1.5 rounded-2xl border border-slate-700/50 flex">
+      <div className="bg-slate-800/50 p-1.5 rounded-2xl border border-slate-700/50 flex shrink-0">
         {['REALTIME', 'DTC', 'TERMINAL'].map(m => (
           <button 
             key={m} 
@@ -190,9 +181,9 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1">
         {status === 'IDLE' ? (
-          <div className="flex flex-col items-center justify-center h-full space-y-8">
+          <div className="flex flex-col items-center justify-center py-10 space-y-8">
             <div className="w-40 h-40 bg-slate-800 rounded-[3rem] flex items-center justify-center border-2 border-slate-700 border-dashed animate-pulse">
               <Bluetooth size={48} className="text-slate-600" />
             </div>
@@ -205,7 +196,7 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
             </button>
           </div>
         ) : (
-          <div className="space-y-4 h-full flex flex-col">
+          <div className="space-y-4">
             {mode === 'REALTIME' && (
               <>
                 <div className={`p-5 rounded-3xl border transition-all flex items-center justify-between ${engineOn ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-800/50 border-slate-700'}`}>
@@ -232,14 +223,14 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
                   <PIDGauge label="Protocolo" value="CAN" unit="BUS" icon={Database} color="bg-slate-500" active={true} />
                 </div>
 
-                <div className="bg-slate-800/40 p-4 rounded-2xl border border-slate-700 mt-auto">
+                <div className="bg-slate-800/40 p-4 rounded-2xl border border-slate-700 mt-4">
                    <div className="flex items-center gap-2 mb-2">
                      <Terminal size={12} className="text-blue-500" />
                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Raw Traffic (OBD-Terminal)</span>
                    </div>
-                   <div className="font-mono text-[10px] text-emerald-500 space-y-1">
-                      {logs.slice(0, 2).map((l, i) => (
-                        <div key={i} className="flex gap-2">
+                   <div className="font-mono text-[10px] text-emerald-500 space-y-1 overflow-x-auto">
+                      {logs.slice(0, 4).map((l, i) => (
+                        <div key={i} className="flex gap-2 whitespace-nowrap">
                           <span className="text-slate-600">[{l.time}]</span>
                           <span className="text-blue-400">&gt; {l.cmd}</span>
                           <span className="text-emerald-400">{l.res}</span>
@@ -251,10 +242,9 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
             )}
 
             {mode === 'TERMINAL' && (
-              <div className="bg-black border border-slate-800 rounded-3xl p-5 flex-1 flex flex-col font-mono">
-                <div className="flex-1 overflow-y-auto space-y-2 text-[11px]">
+              <div className="bg-black border border-slate-800 rounded-3xl p-5 min-h-[300px] flex flex-col font-mono">
+                <div className="flex-1 space-y-2 text-[11px]">
                   <p className="text-slate-500"># OFICINA IA - OBD2 TERMINAL v1.0</p>
-                  <p className="text-slate-500"># CONNECTING TO ELM327...</p>
                   {logs.map((l, i) => (
                     <div key={i} className="space-y-0.5 border-l border-slate-800 pl-3">
                       <div className="flex justify-between opacity-40">
@@ -266,15 +256,11 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
                     </div>
                   ))}
                 </div>
-                <div className="pt-4 mt-4 border-t border-slate-800 flex items-center gap-3">
-                  <div className="text-blue-500 font-bold text-xs">&gt;_</div>
-                  <input readOnly placeholder="Comando travado em modo automático" className="bg-transparent border-none text-slate-500 text-xs w-full outline-none italic" />
-                </div>
               </div>
             )}
 
             {mode === 'DTC' && (
-              <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-6">
+              <div className="flex flex-col items-center justify-center py-10 text-center space-y-6">
                 <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/20">
                   <ShieldAlert size={40} className="text-emerald-500" />
                 </div>
@@ -292,7 +278,7 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onS
       </div>
 
       {status !== 'IDLE' && (
-        <button onClick={() => { setStatus('IDLE'); setEngineOn(false); }} className="w-full py-3 text-slate-600 font-black uppercase text-[9px] tracking-widest mt-auto border-t border-slate-800 pt-4 hover:text-red-400 transition-colors">Encerrar Sessão OBD2</button>
+        <button onClick={() => { setStatus('IDLE'); setEngineOn(false); }} className="w-full py-6 text-slate-600 font-black uppercase text-[9px] tracking-widest border-t border-slate-800 hover:text-red-400 transition-colors">Encerrar Sessão OBD2</button>
       )}
     </div>
   );

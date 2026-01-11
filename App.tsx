@@ -31,15 +31,12 @@ const App: React.FC = () => {
     const initApp = async () => {
       try {
         setIsSyncing(true);
-        
-        // Carrega dados (Tenta API, se falhar ou demorar usa LocalStorage imediatamente)
         const cloudModules = await ValtecAPI.getModules();
         const cloudUsers = await ValtecAPI.getUsers();
         
         setModules(cloudModules || []);
         setAllUsers(cloudUsers || []);
 
-        // Verifica Sessão Ativa
         const sessionData = localStorage.getItem('valtec_session');
         if (sessionData) {
           const parsed = JSON.parse(sessionData);
@@ -52,7 +49,6 @@ const App: React.FC = () => {
       } catch (error) {
         console.error("Erro crítico na inicialização:", error);
       } finally {
-        // Garante que o app saia do estado de carregamento independente do resultado
         setIsSyncing(false);
       }
     };
@@ -93,11 +89,14 @@ const App: React.FC = () => {
     setCurrentScreen('WELCOME');
   };
 
-  const navigate = (screen: Screen) => setCurrentScreen(screen);
+  const navigate = (screen: Screen) => {
+    setCurrentScreen(screen);
+    setIsSidebarOpen(false);
+  };
 
   if (isSyncing) {
     return (
-      <div className="h-screen w-full bg-slate-950 flex flex-col items-center justify-center space-y-6">
+      <div className="w-full bg-slate-950 flex flex-col items-center justify-center space-y-6" style={{ height: 'var(--app-height)' }}>
         <div className="relative">
           <Hammer size={48} className="text-blue-500 animate-bounce" />
           <div className="absolute -inset-6 bg-blue-500/10 blur-2xl rounded-full"></div>
@@ -124,7 +123,7 @@ const App: React.FC = () => {
       }} />;
       case 'FORGOT_PASSWORD': return <ForgotPasswordScreen onNavigate={navigate} allUsers={allUsers} />;
       case 'DASHBOARD': return <DashboardScreen user={currentUser!} onNavigate={navigate} />;
-      case 'DIAGNOSIS': return <DiagnosisScreen user={currentUser!} onNavigate={navigate} onSelectCode={() => navigate('EXPLANATION')} />;
+      case 'DIAGNOSIS': return <DiagnosisScreen user={currentUser!} onNavigate={navigate} onSelectCode={(code) => navigate('EXPLANATION')} />;
       case 'EXPLANATION': return <ExplanationScreen code="P0301" onNavigate={navigate} />;
       case 'WORKSHOP': return <WorkshopScreen onNavigate={navigate} onComplete={() => navigate('DASHBOARD')} />;
       case 'LEARNING': return <LearningScreen onNavigate={navigate} modules={modules} />;
@@ -140,7 +139,7 @@ const App: React.FC = () => {
   const showFrame = !['WELCOME', 'LOGIN', 'FORGOT_PASSWORD', 'ADMIN', 'TESTS'].includes(currentScreen);
 
   return (
-    <div className="flex flex-col h-screen max-w-md mx-auto bg-slate-950 overflow-hidden relative border-x border-slate-900 shadow-2xl">
+    <div className="flex flex-col w-full max-w-2xl bg-slate-950 relative border-x border-slate-900 shadow-2xl overflow-hidden" style={{ height: 'var(--app-height)' }}>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onNavigate={navigate} user={currentUser} onLogout={handleLogout} />
       
       {showFrame && currentUser && (
@@ -156,7 +155,7 @@ const App: React.FC = () => {
         </header>
       )}
 
-      <main className={`flex-1 overflow-y-auto ${showFrame ? 'pb-16' : ''}`}>
+      <main className="flex-1 overflow-y-auto w-full relative">
         {renderScreen()}
       </main>
 

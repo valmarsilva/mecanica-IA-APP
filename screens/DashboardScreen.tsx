@@ -17,7 +17,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNavigate }) =
   ];
 
   return (
-    <div className="p-6 space-y-6 bg-slate-900 min-h-full pb-24 font-inter">
+    <div className="p-4 sm:p-6 space-y-6 bg-slate-900 min-h-full pb-8 font-inter">
       <header className="flex justify-between items-center">
         <div>
           <p className="text-blue-500 text-[10px] font-black uppercase tracking-widest">Valtec Connect v2.5</p>
@@ -60,8 +60,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNavigate }) =
         <Wrench size={120} className="absolute -right-8 -bottom-8 text-white/[0.03] -rotate-12 group-hover:rotate-0 transition-transform duration-700" />
       </div>
 
-      {/* Menu Grid */}
-      <div className="grid grid-cols-1 gap-4">
+      {/* Menu Grid - Adaptativo */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {menuItems.map((item) => {
           const Icon = item.icon;
           return (
