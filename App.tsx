@@ -28,11 +28,20 @@ const App: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(true);
 
   useEffect(() => {
+    // Failsafe: Se a inicialização demorar mais de 3.5 segundos, libera o app.
+    const failsafe = setTimeout(() => {
+      if (isSyncing) {
+        console.warn("Failsafe disparado: Inicialização demorada, forçando modo offline.");
+        setIsSyncing(false);
+      }
+    }, 3500);
+
     const initApp = async () => {
       try {
-        setIsSyncing(true);
-        const cloudModules = await ValtecAPI.getModules();
-        const cloudUsers = await ValtecAPI.getUsers();
+        const [cloudModules, cloudUsers] = await Promise.all([
+          ValtecAPI.getModules(),
+          ValtecAPI.getUsers()
+        ]);
         
         setModules(cloudModules || []);
         setAllUsers(cloudUsers || []);
@@ -50,10 +59,12 @@ const App: React.FC = () => {
         console.error("Erro crítico na inicialização:", error);
       } finally {
         setIsSyncing(false);
+        clearTimeout(failsafe);
       }
     };
 
     initApp();
+    return () => clearTimeout(failsafe);
   }, []);
 
   const handleUpdateModules = async (newModules: Module[]) => {
@@ -103,7 +114,7 @@ const App: React.FC = () => {
         </div>
         <div className="text-center">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] animate-pulse">Iniciando Protocolos</p>
-          <p className="text-[8px] text-slate-600 uppercase mt-2">Valtec IA v2.5.1</p>
+          <p className="text-[8px] text-slate-600 uppercase mt-2">Valtec IA v2.5.2</p>
         </div>
       </div>
     );
