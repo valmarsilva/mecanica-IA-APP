@@ -3,10 +3,10 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Oficina IA Valtec</title>
     
-    <!-- PWA Meta Tags -->
+    <!-- PWA / Mobile Config -->
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#020617" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Oficina IA" />
     
-    <!-- App Icons -->
+    <!-- Ícones para iOS (Essencial para aparecer o ícone no iPhone) -->
     <link rel="apple-touch-icon" href="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6946a4c9ab084c9f3c4e7142/fa407d51d_logo-oficinapng.png" />
     <link rel="icon" type="image/png" href="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6946a4c9ab084c9f3c4e7142/fa407d51d_logo-oficinapng.png" />
 
@@ -26,24 +26,31 @@
         background-color: #020617;
         color: #f8fafc;
         -webkit-tap-highlight-color: transparent;
+        overflow-x: hidden;
       }
-      .font-oswald {
-        font-family: 'Oswald', sans-serif;
-      }
-      /* Safe area para celulares com notch */
+      .font-oswald { font-family: 'Oswald', sans-serif; }
+      
+      /* Ajuste para Notch de celulares modernos */
       main {
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);
       }
-      /* Animação do Scanner QR */
-      @keyframes scan {
-        0% { top: 0%; }
-        100% { top: 100%; }
-      }
-      .qr-scan-line {
-        animation: scan 2s linear infinite;
-      }
+
+      @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
+      .qr-scan-line { animation: scan 2s linear infinite; }
     </style>
+    
+    <script>
+      // Registro do Service Worker para habilitar o "Adicionar à tela de início"
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(reg => console.log('PWA Ready: ', reg.scope))
+            .catch(err => console.log('PWA Error: ', err));
+        });
+      }
+    </script>
+
   <script type="importmap">
 {
   "imports": {
