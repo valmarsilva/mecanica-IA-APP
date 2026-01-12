@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Screen, UserProfile } from '../types';
-import { Scan, Hammer, GraduationCap, Trophy, ChevronRight, Zap, Target, Star, Wrench, ShieldCheck, Bluetooth, QrCode } from 'lucide-react';
+import { Scan, Settings, Car, ChevronRight, Activity, Bluetooth } from 'lucide-react';
 
 interface DashboardScreenProps {
   user: UserProfile;
@@ -9,90 +9,63 @@ interface DashboardScreenProps {
 }
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNavigate }) => {
-  const menuItems = [
-    { id: 'DIAGNOSIS' as Screen, label: 'Scanner OBD2', icon: Scan, color: 'bg-blue-600', desc: 'Diagnóstico & QR Link' },
-    { id: 'WORKSHOP' as Screen, label: 'Oficina Virtual', icon: Hammer, color: 'bg-indigo-600', desc: 'Treinamento Prático' },
-    { id: 'LEARNING' as Screen, label: 'Academia Técnica', icon: GraduationCap, color: 'bg-emerald-600', desc: 'Módulos Especializados' },
-    { id: 'ACHIEVEMENTS' as Screen, label: 'Conquistas', icon: Trophy, color: 'bg-slate-700', desc: 'Status: ' + user.level },
-  ];
+  const activeCar = user.garage.find(v => v.id === user.activeVehicleId);
 
   return (
-    <div className="p-6 space-y-6 bg-slate-900 min-h-full pb-24 font-inter">
+    <div className="p-6 space-y-6 bg-slate-950 min-h-full pb-24">
       <header className="flex justify-between items-center">
         <div>
-          <p className="text-blue-500 text-[10px] font-black uppercase tracking-widest">Valtec Connect v2.5</p>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Olá, {user.name.split(' ')[0]}</h1>
+          <p className="text-blue-500 text-[10px] font-black uppercase tracking-widest">Bem-vindo,</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">{user.name.split(' ')[0]}</h1>
         </div>
-        <div className="relative">
-          <div className="w-12 h-12 rounded-2xl border-2 border-slate-700 overflow-hidden shadow-2xl">
-            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} alt="Avatar" className="w-full h-full bg-slate-800" />
-          </div>
-          <div className="absolute -bottom-1 -right-1 bg-emerald-500 w-4 h-4 rounded-full border-2 border-slate-900"></div>
+        <div className="w-11 h-11 rounded-2xl border border-slate-800 bg-slate-900 flex items-center justify-center text-blue-500">
+           <Activity size={20} />
         </div>
       </header>
 
-      {/* Stats Card */}
-      <div className="bg-slate-800 border border-slate-700/50 p-6 rounded-3xl shadow-2xl relative overflow-hidden group">
-        <div className="relative z-10 flex flex-col space-y-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <ShieldCheck size={16} className="text-blue-400" />
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{user.level}</span>
-            </div>
-            <div className="flex items-center gap-2 px-2 py-1 bg-blue-500/10 rounded-lg border border-blue-500/20">
-               <Bluetooth size={10} className="text-blue-400" />
-               <span className="text-[10px] font-black text-blue-400 uppercase tracking-tighter">BT Ready</span>
-            </div>
+      {/* Card Principal de Conexão */}
+      <button
+        onClick={() => onNavigate('DIAGNOSIS')}
+        className="w-full flex flex-col bg-blue-600 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-blue-600/20 active:scale-[0.98] transition-all relative overflow-hidden group text-left"
+      >
+        <div className="relative z-10 space-y-4">
+          <div className="bg-white/20 w-12 h-12 rounded-2xl flex items-center justify-center">
+            <Scan size={28} />
           </div>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs font-bold text-slate-300">
-              <span>Experiência Técnica</span>
-              <span className="text-blue-400">{user.xp} XP</span>
-            </div>
-            <div className="h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-              <div 
-                className="h-full bg-blue-600 transition-all duration-1000 shadow-[0_0_15px_rgba(37,99,235,0.4)]" 
-                style={{ width: `${Math.min(100, (user.xp / 1000) * 100)}%` }}
-              ></div>
-            </div>
+          <div>
+            <h4 className="font-oswald text-3xl uppercase leading-none">Scanner Pro</h4>
+            <p className="text-[10px] text-blue-100 mt-2 font-black uppercase tracking-widest opacity-80">Iniciar Diagnóstico OBD2</p>
           </div>
         </div>
-        <Wrench size={120} className="absolute -right-8 -bottom-8 text-white/[0.03] -rotate-12 group-hover:rotate-0 transition-transform duration-700" />
-      </div>
+        <Bluetooth size={140} className="absolute -right-8 -bottom-8 text-white/10 -rotate-12 group-hover:scale-110 transition-transform" />
+      </button>
 
-      {/* Menu Grid */}
+      {/* Grid de Funções */}
       <div className="grid grid-cols-1 gap-4">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
-              className="flex items-center gap-4 bg-slate-800/40 hover:bg-slate-800/60 p-5 rounded-2xl border border-slate-700/30 transition-all active:scale-[0.98] group relative"
-            >
-              <div className={`${item.color} p-4 rounded-xl text-white shadow-lg`}>
-                <Icon size={24} />
-              </div>
-              <div className="flex-1 text-left">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-white text-base leading-none">{item.label}</h4>
-                  {item.id === 'DIAGNOSIS' && <QrCode size={12} className="text-blue-400" />}
-                </div>
-                <p className="text-xs text-slate-500 mt-1">{item.desc}</p>
-              </div>
-              <ChevronRight size={20} className="text-slate-600 group-hover:text-blue-400 transition-all" />
-            </button>
-          );
-        })}
+        <button
+          onClick={() => onNavigate('SETTINGS')}
+          className="flex items-center gap-4 bg-slate-900 border border-slate-800 p-6 rounded-[2rem] text-white active:scale-[0.98] transition-all text-left"
+        >
+          <div className="bg-slate-800 p-4 rounded-2xl text-slate-400">
+            <Car size={24} />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-bold text-base leading-none">Minha Garagem</h4>
+            <p className="text-[9px] text-slate-500 mt-1 uppercase font-black tracking-widest">
+              {activeCar ? `${activeCar.make} ${activeCar.model}` : "Nenhum carro ativo"}
+            </p>
+          </div>
+          <ChevronRight size={20} className="text-slate-700" />
+        </button>
       </div>
 
-      {/* Quick Tip */}
-      <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl flex items-start gap-3 shadow-inner">
-        <Zap size={20} className="text-amber-500 shrink-0 mt-0.5" />
-        <p className="text-xs text-slate-400 leading-relaxed italic">
-          <span className="text-amber-500 font-bold not-italic">Dica:</span> Ao usar o Scanner, certifique-se que o QR Code do adaptador está limpo para leitura imediata.
-        </p>
+      <div className="pt-8">
+        <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+            Servidor Valtec Online
+          </p>
+        </div>
       </div>
     </div>
   );

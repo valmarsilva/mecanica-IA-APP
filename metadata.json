@@ -1,7 +1,9 @@
 {
-  "name": "Oficina IA",
-  "description": "Uma plataforma inteligente para aprendizado de mecânica e diagnóstico automotivo com IA.",
+  "name": "Oficina IA Valtec",
+  "short_name": "Valtec IA",
+  "description": "Diagnóstico Automotivo Inteligente via OBD2.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "microphone"
   ]
 }

@@ -7,7 +7,7 @@
     <title>Oficina IA Valtec</title>
     
     <!-- PWA / Mobile Config -->
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#020617" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -31,7 +31,6 @@
       }
       .font-oswald { font-family: 'Oswald', sans-serif; }
       
-      /* Espaçamento para o notch/barra de status do iPhone */
       #root {
         padding-top: env(safe-area-inset-top);
         height: 100vh;
@@ -43,12 +42,11 @@
     </style>
     
     <script>
-      // Registro do Service Worker com caminho absoluto
+      // Registro básico e direto do Service Worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('PWA Service Worker Ativo'))
-            .catch(err => console.error('PWA Erro:', err));
+          navigator.serviceWorker.register('sw.js')
+            .catch(err => console.log('SW skip on dev'));
         });
       }
     </script>

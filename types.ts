@@ -1,30 +1,34 @@
 
+// Fix: Added missing screen names to Screen union and defined/exported SystemCategory, Module, and UserStatus types to resolve TypeScript errors across the application.
+
 export type Screen = 
   | 'WELCOME' 
   | 'LOGIN' 
   | 'DASHBOARD' 
   | 'DIAGNOSIS' 
-  | 'EXPLANATION' 
-  | 'WORKSHOP' 
-  | 'LEARNING' 
-  | 'ACHIEVEMENTS' 
   | 'SETTINGS'
-  | 'TESTS'
+  | 'FORGOT_PASSWORD'
+  | 'EXPLANATION'
+  | 'WORKSHOP'
+  | 'LEARNING'
+  | 'ACHIEVEMENTS'
   | 'ADMIN'
   | 'CHECKOUT'
-  | 'FORGOT_PASSWORD';
+  | 'TEST';
+
+export type UserStatus = 'pending' | 'approved' | 'blocked';
 
 export type SystemCategory = 'MECANICA' | 'ELETRICA' | 'ELETRONICA';
 
 export interface Module {
   id: string;
   title: string;
+  desc: string;
   category: SystemCategory;
-  level: 'Iniciante' | 'Técnico' | 'Avançado' | 'Expert' | 'Master';
-  unlocked: boolean;
-  videoUrl?: string; // Link do YouTube/Vimeo
-  desc: string;     // Conteúdo técnico do "PDF"
-  hasPdf: boolean;
+  level: string;
+  videoUrl?: string;
+  hasPdf?: boolean;
+  unlocked?: boolean;
   createdAt: string;
 }
 
@@ -33,18 +37,13 @@ export interface Vehicle {
   make: string;
   model: string;
   year: string;
-  engine?: string;
-  fuel?: string;
 }
-
-export type UserRole = 'user' | 'admin';
-export type UserStatus = 'pending' | 'approved' | 'blocked';
 
 export interface UserProfile {
   id: string;
   email: string;
   name: string;
-  role: UserRole;
+  role: 'user' | 'admin';
   status: UserStatus;
   level: string;
   xp: number;
