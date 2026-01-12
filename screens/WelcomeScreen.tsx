@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Screen } from '../types';
-import { ChevronRight, Zap, Target, Wrench, Smartphone, QrCode, X, Share, MoreVertical, PlusSquare, Download, Apple } from 'lucide-react';
+import { ChevronRight, Zap, Target, Wrench, Smartphone, QrCode, X, Share, MoreVertical, PlusSquare, Download, Apple, Copy, Check } from 'lucide-react';
 import { BRAND_CONFIG } from '../brandConfig';
 
 interface WelcomeScreenProps {
@@ -13,19 +13,25 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNavigate }) => {
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isIOS, setIsIOS] = useState(false);
+  const [copied, setCopied] = useState(false);
   
   const hasCustomLogo = BRAND_CONFIG.logoImageUrl !== "" && !imageError;
-  const appUrl = window.location.href;
+  
+  // Garantir que a URL para o QR Code seja a URL pública correta
+  const rawUrl = window.location.href.split('?')[0].split('#')[0];
+  const appUrl = rawUrl.endsWith('/') ? rawUrl : `${rawUrl}/`;
 
   useEffect(() => {
-    // Detecta se é iPhone/iPad
     const isApple = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(isApple);
 
-    window.addEventListener('beforeinstallprompt', (e) => {
+    const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-    });
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
   const handleNativeInstall = async () => {
@@ -38,6 +44,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNavigate }) => {
     } else {
       setShowInstallModal(true);
     }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(appUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -82,7 +94,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* BOTAO DE INSTALAÇÃO EM DESTAQUE */}
+        {/* BOTAO DE INSTALAÇÃO */}
         <button 
           onClick={handleNativeInstall}
           className="w-full max-w-xs py-5 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[2rem] flex items-center justify-between group relative overflow-hidden shadow-[0_20px_40px_rgba(37,99,235,0.3)] hover:scale-[1.02] transition-all"
@@ -92,12 +104,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNavigate }) => {
               <Smartphone size={22} />
             </div>
             <div className="text-left">
-              <p className="text-[12px] font-black text-white uppercase tracking-widest leading-none">Baixar Aplicativo</p>
-              <p className="text-[9px] text-blue-100 uppercase font-bold mt-1 opacity-70">Fixar ícone no celular</p>
+              <p className="text-[12px] font-black text-white uppercase tracking-widest leading-none">Acessar no Celular</p>
+              <p className="text-[9px] text-blue-100 uppercase font-bold mt-1 opacity-70">Instalar App Nativo</p>
             </div>
           </div>
           <ChevronRight size={20} className="text-white/50 group-hover:translate-x-1 transition-transform" />
-          <div className="absolute top-0 left-0 w-full h-full bg-white/5 animate-pulse pointer-events-none"></div>
         </button>
 
         <div className="grid grid-cols-3 gap-6 w-full max-w-xs pt-4 opacity-40">
@@ -111,13 +122,13 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNavigate }) => {
             <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400">
               <Download size={18} />
             </div>
-            <span className="text-[7px] font-black uppercase tracking-widest">Offline</span>
+            <span className="text-[7px] font-black uppercase tracking-widest">PWA</span>
           </div>
           <div className="flex flex-col items-center gap-2">
             <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400">
               <Target size={18} />
             </div>
-            <span className="text-[7px] font-black uppercase tracking-widest">Prático</span>
+            <span className="text-[7px] font-black uppercase tracking-widest">Mestre</span>
           </div>
         </div>
       </div>
@@ -127,11 +138,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNavigate }) => {
           onClick={() => onNavigate('LOGIN')}
           className="w-full py-4 text-slate-400 hover:text-white font-black rounded-2xl transition-all flex items-center justify-center gap-3 text-[10px] uppercase tracking-[0.2em] border border-slate-800"
         >
-          JÁ TENHO ACESSO <ChevronRight size={16} />
+          ENTRAR NO SISTEMA <ChevronRight size={16} />
         </button>
       </div>
 
-      {/* MODAL DE INSTRUÇÕES DE INSTALAÇÃO */}
+      {/* MODAL DE QR CODE E INSTALAÇÃO */}
       {showInstallModal && (
         <div className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="bg-slate-900 w-full max-w-sm rounded-[3rem] border border-slate-800 shadow-2xl overflow-hidden relative">
@@ -141,67 +152,66 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNavigate }) => {
             
             <div className="p-8 space-y-8">
               <div className="text-center space-y-2">
-                <div className="w-16 h-16 bg-blue-600/10 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-blue-600/20">
-                  <Smartphone size={32} className="text-blue-500" />
-                </div>
-                <h3 className="text-2xl font-oswald text-white uppercase">Instalar Oficina IA</h3>
-                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-tight">Siga os passos para fixar o ícone</p>
+                <h3 className="text-2xl font-oswald text-white uppercase tracking-tight">Levar para o Celular</h3>
+                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest leading-tight">Escaneie o QR Code ou copie o link abaixo</p>
               </div>
 
-              {/* INSTRUÇÕES DINÂMICAS */}
-              <div className="space-y-4 bg-slate-950/50 p-6 rounded-3xl border border-slate-800">
-                {isIOS ? (
-                  <div className="space-y-6">
-                    <h4 className="text-[11px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-2">
-                      <Apple size={16} /> Instruções para iPhone:
-                    </h4>
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <div className="bg-blue-600 p-2 rounded-lg text-white"><Share size={16} /></div>
-                        <p className="text-[11px] text-slate-300 leading-relaxed">1. Toque no botão de <b>Compartilhar</b> no rodapé do seu Safari.</p>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <div className="bg-blue-600 p-2 rounded-lg text-white"><PlusSquare size={16} /></div>
-                        <p className="text-[11px] text-slate-300 leading-relaxed">2. Role para baixo e clique em <b>"Adicionar à Tela de Início"</b>.</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <h4 className="text-[11px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-2">
-                      <Smartphone size={16} /> Instruções para Android:
-                    </h4>
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <div className="bg-blue-600 p-2 rounded-lg text-white"><MoreVertical size={16} /></div>
-                        <p className="text-[11px] text-slate-300 leading-relaxed">1. Toque nos <b>três pontinhos</b> no canto superior do Chrome.</p>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <div className="bg-blue-600 p-2 rounded-lg text-white"><Download size={16} /></div>
-                        <p className="text-[11px] text-slate-300 leading-relaxed">2. Selecione <b>"Instalar Aplicativo"</b> ou "Adicionar à tela inicial".</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* QR CODE PARA QUEM ESTÁ NO PC */}
-              <div className="flex flex-col items-center space-y-4 pt-4 border-t border-slate-800">
-                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Abrir no Celular agora:</p>
-                <div className="p-3 bg-white rounded-2xl shadow-xl">
+              {/* QR CODE RE-GERADO COM URL LIMPA */}
+              <div className="flex flex-col items-center space-y-6">
+                <div className="p-4 bg-white rounded-[2rem] shadow-2xl relative group">
                   <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(appUrl)}&bgcolor=ffffff&color=020617`} 
-                    alt="QR Download"
-                    className="w-32 h-32"
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(appUrl)}&margin=10`} 
+                    alt="QR Link"
+                    className="w-48 h-48"
                   />
+                  <div className="absolute inset-0 border-4 border-blue-600/10 rounded-[2rem] pointer-events-none"></div>
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500/50 qr-scan-line"></div>
+                </div>
+
+                <div className="w-full space-y-3">
+                  <div className="flex items-center gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                    <input 
+                      readOnly 
+                      value={appUrl} 
+                      className="bg-transparent text-[10px] text-slate-400 flex-1 outline-none font-mono truncate"
+                    />
+                    <button 
+                      onClick={copyToClipboard}
+                      className="p-2 bg-blue-600 text-white rounded-lg active:scale-90 transition-transform"
+                    >
+                      {copied ? <Check size={14} /> : <Copy size={14} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* INSTRUÇÕES PWA */}
+              <div className="space-y-4 bg-slate-950/50 p-5 rounded-3xl border border-slate-800">
+                <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-2">
+                  <Zap size={14} className="fill-blue-500" /> Como transformar em App:
+                </h4>
+                
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-slate-800 p-2 rounded-lg text-slate-400">
+                      {isIOS ? <Share size={14} /> : <MoreVertical size={14} />}
+                    </div>
+                    <p className="text-[10px] text-slate-300 leading-relaxed">
+                      {isIOS ? (
+                        <>No Safari, clique em <b>Compartilhar</b> e selecione <b>"Adicionar à Tela de Início"</b>.</>
+                      ) : (
+                        <>No Chrome, clique nos <b>3 pontos</b> e selecione <b>"Instalar Aplicativo"</b>.</>
+                      )}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <button 
                 onClick={() => setShowInstallModal(false)}
-                className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20 active:scale-95 transition-all"
+                className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20"
               >
-                ENTENDI, VAMOS LÁ!
+                ENTENDI, VOU ESCANEAR!
               </button>
             </div>
           </div>

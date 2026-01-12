@@ -8,16 +8,19 @@
       "src": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6946a4c9ab084c9f3c4e7142/fa407d51d_logo-oficinapng.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6946a4c9ab084c9f3c4e7142/fa407d51d_logo-oficinapng.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "start_url": "/",
+  "start_url": ".",
   "display": "standalone",
+  "scope": "/",
   "theme_color": "#020617",
-  "background_color": "#020617"
+  "background_color": "#020617",
+  "orientation": "portrait"
 }
