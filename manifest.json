@@ -1,5 +1,6 @@
 
 {
+  "id": "oficina-ia-valtec-pwa",
   "short_name": "Oficina IA",
   "name": "Oficina IA Valtec",
   "description": "Plataforma de Diagnóstico e Academia Automotiva",
@@ -17,10 +18,11 @@
       "purpose": "maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
   "scope": "/",
   "theme_color": "#020617",
   "background_color": "#020617",
-  "orientation": "portrait"
+  "orientation": "portrait",
+  "categories": ["education", "productivity"]
 }
