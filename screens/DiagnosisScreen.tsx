@@ -1,14 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Screen, UserProfile, Vehicle } from '../types';
-import { Bluetooth, Power, Activity, Thermometer, Zap, Car, X, Plus, Check, ChevronRight, AlertCircle } from 'lucide-react';
+import { Bluetooth, Power, Activity, Thermometer, Zap, Car, Plus, Check, ChevronRight, AlertCircle, Volume2, Loader2, Mic } from 'lucide-react';
+import { generateSpeech, getMechanicalExplanation, decodeAudioData } from '../geminiService';
 
 interface DiagnosisScreenProps {
   user: UserProfile;
   onNavigate: (screen: Screen) => void;
   onUpdateUser: (updates: Partial<UserProfile>) => void;
-  // Added missing onSelectCode property to fix TypeScript error in App.tsx
-  onSelectCode: () => void;
+  onSelectCode: (code: string) => void;
 }
 
 const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onUpdateUser, onSelectCode }) => {
@@ -17,14 +17,74 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onU
   const [showPicker, setShowPicker] = useState(!user.activeVehicleId);
   const [isAdding, setIsAdding] = useState(false);
   const [newVehicle, setNewVehicle] = useState({ make: '', model: '', year: '' });
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   const activeVehicle = user.garage.find(v => v.id === user.activeVehicleId);
+
+  const playConnectionSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const playTone = (freq: number, start: number, duration: number) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.1, start);
+        gain.gain.exponentialRampToValueAtTime(0.01, start + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(start);
+        osc.stop(start + duration);
+      };
+      const now = audioCtx.currentTime;
+      playTone(523.25, now, 0.1); 
+      playTone(783.99, now + 0.12, 0.15);
+    } catch (e) {
+      console.warn("Audio feedback não suportado.");
+    }
+  };
+
+  const handleVoiceDiagnosis = async () => {
+    if (isSpeaking) return;
+    
+    setIsSpeaking(true);
+    try {
+      // Mock de código para o protótipo (em um app real viria do OBD2)
+      const code = "P0301";
+      const explanation = await getMechanicalExplanation(code);
+      const speechText = `Código ${code} detectado. ${explanation.explanation}. Verifique principalmente: ${explanation.causes[0]?.part || 'o sistema de ignição'}.`;
+      
+      const audioBytes = await generateSpeech(speechText);
+      
+      if (audioBytes) {
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        }
+        
+        const ctx = audioContextRef.current;
+        const buffer = await decodeAudioData(audioBytes, ctx, 24000, 1);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.onended = () => setIsSpeaking(false);
+        source.start();
+      } else {
+        setIsSpeaking(false);
+      }
+    } catch (error) {
+      console.error("Erro no assistente de voz:", error);
+      setIsSpeaking(false);
+    }
+  };
 
   const handleStartScanner = () => {
     if (!user.activeVehicleId) {
       setShowPicker(true);
       return;
     }
+    playConnectionSound();
     setStatus('CONNECTING');
     setTimeout(() => setStatus('READY'), 2000);
   };
@@ -128,15 +188,34 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onU
                 <span className="text-2xl font-oswald font-bold text-white">{engineOn ? '14.2V' : '12.4V'}</span>
               </div>
               <div 
-                // Trigger onSelectCode when clicking on DTC errors if errors are simulated (engineOn)
-                onClick={engineOn ? onSelectCode : undefined}
-                className={`bg-slate-800/50 border p-5 rounded-3xl flex flex-col items-center justify-center space-y-2 transition-all ${engineOn ? 'border-amber-500/50 cursor-pointer hover:bg-amber-500/10' : 'border-slate-700'}`}
+                className={`bg-slate-800/50 border p-5 rounded-3xl flex flex-col items-center justify-center space-y-2 transition-all relative ${engineOn ? 'border-amber-500/50' : 'border-slate-700'}`}
               >
                 {engineOn ? <AlertCircle size={20} className="text-amber-500" /> : <Check size={20} className="text-emerald-500" />}
                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">DTC Erros</span>
                 <span className="text-2xl font-oswald font-bold text-white">{engineOn ? '01' : '00'}</span>
+                
+                {engineOn && (
+                  <button 
+                    onClick={handleVoiceDiagnosis}
+                    disabled={isSpeaking}
+                    className="absolute -top-2 -right-2 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all border-2 border-slate-900"
+                  >
+                    {isSpeaking ? <Loader2 size={14} className="text-white animate-spin" /> : <Volume2 size={14} className="text-white" />}
+                  </button>
+                )}
               </div>
             </div>
+
+            {isSpeaking && (
+              <div className="bg-blue-600/10 border border-blue-500/30 p-4 rounded-2xl flex items-center gap-4 animate-in slide-in-from-bottom-2">
+                <div className="flex gap-1">
+                  {[1,2,3,4].map(i => (
+                    <div key={i} className="w-1 bg-blue-500 rounded-full animate-bounce" style={{ height: '12px', animationDelay: `${i * 0.1}s` }}></div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest italic">IA descrevendo falha técnica...</p>
+              </div>
+            )}
 
             <button onClick={() => setStatus('IDLE')} className="w-full py-4 text-slate-600 font-black uppercase text-[10px] tracking-widest border-t border-slate-800 pt-8">
               Encerrar Scanner
@@ -148,9 +227,8 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onU
       {showPicker && (
         <div className="fixed inset-0 z-[110] bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in">
           <div className="bg-slate-900 w-full max-w-sm rounded-[3rem] border border-slate-800 overflow-hidden flex flex-col max-h-[80vh]">
-            <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+            <div className="p-6 border-b border-slate-800 flex justify-center items-center">
               <h3 className="text-white font-oswald uppercase text-lg">Selecione o Veículo</h3>
-              {!isAdding && user.garage.length > 0 && <button onClick={() => setShowPicker(false)}><X size={20} className="text-slate-500" /></button>}
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -160,8 +238,7 @@ const DiagnosisScreen: React.FC<DiagnosisScreenProps> = ({ user, onNavigate, onU
                   <input value={newVehicle.model} onChange={e => setNewVehicle({...newVehicle, model: e.target.value})} placeholder="Modelo" className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white" />
                   <input value={newVehicle.year} onChange={e => setNewVehicle({...newVehicle, year: e.target.value})} placeholder="Ano" className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white" type="number" />
                   <div className="flex gap-2">
-                    <button onClick={() => setIsAdding(false)} className="flex-1 py-3 bg-slate-800 text-white rounded-xl text-[10px] font-black uppercase">Voltar</button>
-                    <button onClick={handleSaveQuickVehicle} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase">Confirmar</button>
+                    <button onClick={handleSaveQuickVehicle} className="w-full py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase">Confirmar Cadastro</button>
                   </div>
                 </div>
               ) : (

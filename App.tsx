@@ -5,6 +5,7 @@ import LoginScreen from './screens/LoginScreen';
 import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import DiagnosisScreen from './screens/DiagnosisScreen';
+import ExplanationScreen from './screens/ExplanationScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import Navigation from './components/Navigation';
 import Sidebar from './components/Sidebar';
@@ -18,6 +19,7 @@ const App: React.FC = () => {
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedCode, setSelectedCode] = useState<string>('');
 
   useEffect(() => {
     const init = async () => {
@@ -59,6 +61,11 @@ const App: React.FC = () => {
     setCurrentScreen('WELCOME');
   };
 
+  const handleSelectCode = (code: string) => {
+    setSelectedCode(code);
+    setCurrentScreen('EXPLANATION');
+  };
+
   if (loading) return (
     <div className="h-screen bg-slate-950 flex items-center justify-center">
       <Hammer className="text-blue-500 animate-bounce" size={40} />
@@ -74,7 +81,8 @@ const App: React.FC = () => {
       case 'LOGIN': return <LoginScreen onNavigate={setCurrentScreen} allUsers={allUsers} onLogin={handleLogin} onRegister={(u) => setAllUsers([...allUsers, u])} />;
       case 'FORGOT_PASSWORD': return <ForgotPasswordScreen onNavigate={setCurrentScreen} allUsers={allUsers} />;
       case 'DASHBOARD': return <DashboardScreen user={currentUser!} onNavigate={setCurrentScreen} />;
-      case 'DIAGNOSIS': return <DiagnosisScreen user={currentUser!} onNavigate={setCurrentScreen} onUpdateUser={handleUpdateUser} onSelectCode={() => {}} />;
+      case 'DIAGNOSIS': return <DiagnosisScreen user={currentUser!} onNavigate={setCurrentScreen} onUpdateUser={handleUpdateUser} onSelectCode={() => handleSelectCode('P0301')} />;
+      case 'EXPLANATION': return <ExplanationScreen code={selectedCode} onNavigate={setCurrentScreen} />;
       case 'SETTINGS': return <SettingsScreen user={currentUser!} onNavigate={setCurrentScreen} onUpdateUser={handleUpdateUser} onLogout={handleLogout} />;
       default: return <WelcomeScreen onNavigate={setCurrentScreen} />;
     }
@@ -83,11 +91,11 @@ const App: React.FC = () => {
   const showNav = !['WELCOME', 'LOGIN', 'FORGOT_PASSWORD'].includes(currentScreen) && currentUser;
 
   return (
-    <div className="flex flex-col h-screen max-w-md mx-auto bg-slate-950 border-x border-slate-900 font-inter shadow-2xl overflow-hidden">
+    <div className="flex flex-col h-screen max-w-md mx-auto bg-slate-950 border-x border-slate-900 font-inter shadow-2xl overflow-hidden relative">
       {showNav && (
         <>
           <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onNavigate={setCurrentScreen} user={currentUser} onLogout={handleLogout} />
-          <header className="h-14 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-40">
+          <header className="h-14 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-40 shrink-0">
             <button onClick={() => setIsSidebarOpen(true)} className="text-slate-400 p-2 -ml-2"><Menu size={22} /></button>
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 bg-blue-600 rounded flex items-center justify-center">
